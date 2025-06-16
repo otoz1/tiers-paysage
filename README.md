@@ -3,7 +3,7 @@
 Ceci est un site informatif avec gestion de pages pour le projet du Tiers Paysage.
 
 ## Fonctionnalités
-- **Page d'accueil** : liste des documents, bouton "En savoir +" pour chaque document
+- **Page d'accueil** : liste des documents, bouton "En savoir plus" pour chaque document
 - **Page de détail** : affiche le contenu formaté du document
 - **Administration** :
   - Authentification par mot de passe
@@ -11,7 +11,7 @@ Ceci est un site informatif avec gestion de pages pour le projet du Tiers Paysag
 
 ## Installation
 
-### 1. Cloner le dépôt
+### 1. Cloner le répertoire
 ```bash
 git clone https://github.com/otoz1/tiers-paysage
 cd tiers-paysage
