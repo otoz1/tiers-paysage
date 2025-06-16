@@ -51,7 +51,7 @@ Le site est accessible sur http://localhost:3000
 - Les documents ajoutés via l'admin apparaissent automatiquement sur la page d'accueil.
 
 ---
-![Screenshot1](https://myoctocat.com/assets/images/base-octocat.svg)
-![Screenshot2](https://myoctocat.com/assets/images/base-octocat.svg)
-![Screenshot3](https://myoctocat.com/assets/images/base-octocat.svg)
-![Screenshot4](https://myoctocat.com/assets/images/base-octocat.svg)
+![Screenshot1](https://github.com/otoz1/tiers-paysage/blob/6638e9cde2f2af845c507a770afc3918a775d1fa/images/Screenshot1.png?raw=true)
+![Screenshot2](https://github.com/otoz1/tiers-paysage/blob/main/images/Screenshot2.png?raw=true)
+![Screenshot3](https://github.com/otoz1/tiers-paysage/blob/main/images/Screenshot3.png?raw=true)
+![Screenshot4](https://github.com/otoz1/tiers-paysage/blob/main/images/Screenshot4.png?raw=true)
