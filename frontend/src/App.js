@@ -58,7 +58,7 @@ function Home() {
   const nouveaute = documents[0];
   const mainImgIndex = nouveaute && typeof nouveaute.mainImage === 'number' ? nouveaute.mainImage : 0;
   const bgImage = nouveaute && nouveaute.images && nouveaute.images[mainImgIndex] ? `${API_URL}${nouveaute.images[mainImgIndex]}` : null;
-  // Extrait du texte (sans balises HTML)
+  // extraire le texte sans balise html
   const getExcerpt = (html, maxLen = 200) => {
     const tmp = document.createElement('div');
     tmp.innerHTML = html;

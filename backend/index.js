@@ -54,7 +54,7 @@ const Document = sequelize.define('Document', {
     allowNull: false,
   },
   images: {
-    type: DataTypes.TEXT, // JSON.stringify([url1, url2, ...])
+    type: DataTypes.TEXT,
     allowNull: true,
     get() {
       const raw = this.getDataValue('images');
@@ -99,13 +99,13 @@ app.post('/api/admin/login', (req, res) => {
   else res.status(401).json({ success: false });
 });
 
-// Upload d'images (plusieurs)
+// upload images (plusieurs)
 app.post('/api/admin/upload', upload.array('images', 10), (req, res) => {
   const files = req.files.map(f => `/uploads/${f.filename}`);
   res.json({ files });
 });
 
-// Création d'un document avec images
+// création document avec images
 app.post('/api/admin/documents', async (req, res) => {
   const { title, content, password, images, mainImage } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
