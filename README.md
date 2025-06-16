@@ -51,3 +51,7 @@ Le site est accessible sur http://localhost:3000
 - Les documents ajoutés via l'admin apparaissent automatiquement sur la page d'accueil.
 
 ---
+![Screenshot1](https://myoctocat.com/assets/images/base-octocat.svg)
+![Screenshot2](https://myoctocat.com/assets/images/base-octocat.svg)
+![Screenshot3](https://myoctocat.com/assets/images/base-octocat.svg)
+![Screenshot4](https://myoctocat.com/assets/images/base-octocat.svg)
