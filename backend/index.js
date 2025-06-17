@@ -1,5 +1,5 @@
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); 
 const bodyParser = require('body-parser');
 const { Sequelize, DataTypes } = require('sequelize');
 const multer = require('multer');
@@ -134,7 +134,6 @@ app.delete('/api/admin/documents/:id', async (req, res) => {
   await doc.destroy();
   res.json({ success: true });
 });
-
 
 console.log('Ready to listen...');
 app.listen(port, () => {
