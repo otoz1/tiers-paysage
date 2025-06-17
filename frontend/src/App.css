@@ -1,7 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
+
+@font-face {
+  font-family: "Futura";
+  src: url("Futura Bold.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 body {
-  font-family: 'Inter', Arial, sans-serif;
+  font-family: 'Inter';
   background: #f5f6fa;
   color: #222;
   margin: 0;

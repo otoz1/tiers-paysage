@@ -9,7 +9,7 @@ import ecoleJardinImg from './ecole-jardin.png';
 import ReactDOM from 'react-dom';
 
 
-const API_URL = 'http://192.168.94.141:4000'; 
+const API_URL = 'http://localhost:4000';
 
 function useBodyClass(className, active, bgImage) {
   useEffect(() => {
@@ -26,7 +26,7 @@ function useBodyClass(className, active, bgImage) {
       document.body.style.backgroundImage = '';
       document.body.style.backgroundSize = '';
       document.body.style.backgroundPosition = '';
-      document.body.style.backgroundRepeat = '';
+      document.body.style.backgroundRepeat = '';  
     }
     return () => {
       document.body.classList.remove(className);
@@ -116,10 +116,11 @@ function Navbar() {
         <nav>
           <Link className={isHome ? 'active' : ''} to="/" onClick={handleNavClick}>Accueil</Link>
           <Link className={location.pathname==='/nouveautes' ? 'active' : ''} to="/nouveautes" onClick={handleNavClick}>Actualités</Link>
+          <Link className={location.pathname==='/releve' ? 'active' : ''} to="/releve" onClick={handleNavClick}><span role="img" aria-label="relevé">🌱</span> Relevé 🦔</Link>
           <Link className={location.pathname==='/tiers-paysage' ? 'active' : ''} to="/tiers-paysage" onClick={handleNavClick}>Tiers paysage</Link>
           <Link className={location.pathname==='/gilles-clement' ? 'active' : ''} to="/gilles-clement" onClick={handleNavClick}>Gilles Clément</Link>
-          <Link className={location.pathname==='/ecole-jardin-planetaire' ? 'active' : ''} to="/ecole-jardin-planetaire" onClick={handleNavClick}>École du Jardin Planétaire</Link>
-          <Link className={location.pathname==='/contact' ? 'active' : ''} to="/contact" onClick={handleNavClick}>Contact</Link>
+          <Link className={location.pathname==='/ecole-jardin-planetaire' ? 'active' : ''} to="/ecole-jardin-planetaire" onClick={handleNavClick}>École du jardin planétaire</Link>
+          <Link className={location.pathname==='/contact' ? 'active' : ''} to="/contact" onClick={handleNavClick}>À propos</Link>
         </nav>
       </div>
       {burgerButton}
@@ -401,6 +402,7 @@ function DocumentDetail() {
 function Admin() {
   const [password, setPassword] = useState('');
   const [isAuth, setIsAuth] = useState(false);
+  const [adminTab, setAdminTab] = useState(''); // '' | 'actus' | 'releve'
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]);
@@ -411,6 +413,19 @@ function Admin() {
   const [mainImage, setMainImage] = useState(0);
   const [imageResolutions, setImageResolutions] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifDesc, setNotifDesc] = useState('');
+  const [notif, setNotif] = useState(null);
+  const [releves, setReleves] = useState([]);
+  const [annee, setAnnee] = useState(new Date().getFullYear());
+  const [releveType, setReleveType] = useState('faune');
+  const [releveNom, setReleveNom] = useState('');
+  const [releveDesc, setReleveDesc] = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importYear, setImportYear] = useState(annee);
+  const [importType, setImportType] = useState('faune');
+  const [importMsg, setImportMsg] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -424,10 +439,26 @@ function Admin() {
   };
 
   useEffect(() => {
-    if (isAuth) {
+    if (isAuth && adminTab === 'actus') {
       axios.get(`${API_URL}/api/documents`).then(res => setDocuments(res.data));
+      axios.get(`${API_URL}/api/notification`).then(res => {
+        setNotif(res.data);
+        if (res.data) {
+          setNotifTitle(res.data.title);
+          setNotifDesc(res.data.description);
+        } else {
+          setNotifTitle('');
+          setNotifDesc('');
+        }
+      });
     }
-  }, [isAuth]);
+  }, [isAuth, adminTab]);
+
+  useEffect(() => {
+    if (isAuth && adminTab === 'releve') {
+      axios.get(`${API_URL}/api/releves?annee=${annee}`).then(res => setReleves(res.data));
+    }
+  }, [isAuth, adminTab, annee]);
 
   const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
@@ -508,6 +539,75 @@ function Admin() {
     } 
   };
 
+  const handleAddReleve = async (e) => {
+    e.preventDefault();
+    if (!releveNom) return setError('Nom requis');
+    try {
+      await axios.post(`${API_URL}/api/admin/releves`, { 
+        annee, 
+        type: releveType, // Le backend attend 'type'
+        nom: releveNom, 
+        description: releveDesc, 
+        password,
+        emoji: releveType === 'faune' ? '🦋' : releveType === 'flore' ? '🌸' : '🍄'
+      });
+      setReleveNom(''); 
+      setReleveDesc('');
+      const res = await axios.get(`${API_URL}/api/releves?annee=${annee}`);
+      setReleves(res.data);
+      setError('');
+    } catch {
+      setError('Erreur lors de l\'ajout du relevé');
+    }
+  };
+
+  const handleDeleteReleve = async (id) => {
+    if (!window.confirm('Supprimer ce relevé ?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/admin/releves/${id}`, { data: { password } });
+      setReleves(releves => releves.filter(r => r.id !== id));
+      setError('');
+    } catch {
+      setError('Erreur lors de la suppression du relevé');
+    }
+  };
+
+  const handleImport = async (e) => {
+    e.preventDefault();
+    if (!importFile) return setImportMsg('Sélectionnez un fichier.');
+    if (!importYear) return setImportMsg('Indiquez une année.');
+    const formData = new FormData();
+    formData.append('file', importFile);
+    formData.append('annee', importYear);
+    formData.append('type', importType);
+    formData.append('password', password);
+    try {
+      const res = await axios.post(`${API_URL}/api/admin/import-releves`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setImportMsg(`Import réussi : ${res.data.count} relevés ajoutés.`);
+      setShowImport(false);
+      setImportFile(null);
+      setImportYear(annee);
+      setImportType('faune');
+      // recharge la liste
+      const r = await axios.get(`${API_URL}/api/releves?annee=${annee}`);
+      setReleves(r.data);
+    } catch (err) {
+      setImportMsg('Erreur import : ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleDeleteAllReleves = async () => {
+    if (!window.confirm(`Êtes-vous sûr de vouloir supprimer tous les relevés de ${annee} ?`)) return;
+    try {
+      const res = await axios.delete(`${API_URL}/api/admin/releves/annee/${annee}`, { data: { password } });
+      setReleves([]);
+      setError('');
+      alert(`${res.data.count} relevés ont été supprimés.`);
+    } catch {
+      setError('Erreur lors de la suppression des relevés');
+    }
+  };
+
   if (!isAuth) {
     return (
       <div className="container">
@@ -518,6 +618,88 @@ function Admin() {
         </form>
         {error && <div style={{color:'red'}}>{error}</div>}
         <Link className="btn" to="/">Retour à l'accueil</Link>
+      </div>
+    );
+  }
+
+  if (!adminTab) {
+    return (
+      <div className="container">
+        <h2>Administration</h2>
+        <div style={{display:'flex', gap:24, margin:'32px 0'}}>
+          <button className="btn" style={{fontSize:'1.2rem', padding:'18px 32px'}} onClick={()=>setAdminTab('actus')}>Gestion des actualités</button>
+          <button className="btn" style={{fontSize:'1.2rem', padding:'18px 32px', background:'#1a7f5a'}} onClick={()=>setAdminTab('releve')}>Gestion des relevés</button>
+        </div>
+        <Link className="btn" to="/">Retour à l'accueil</Link>
+      </div>
+    );
+  }
+
+  if (adminTab === 'releve') {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = currentYear + 1; y >= 2023; y--) years.push(y);
+    return (
+      <div className="container">
+        <h2 style={{marginBottom:18}}>Gestion des relevés</h2>
+        <div style={{marginBottom:18}}>
+          <label>Année : </label>
+          <select value={annee} onChange={e=>setAnnee(Number(e.target.value))} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button className="btn" style={{marginLeft:12, background:'#e57373'}} onClick={handleDeleteAllReleves}>Supprimer tous les relevés de {annee}</button>
+        </div>
+        <button className="btn" style={{marginBottom:18, background:'#1a7f5a'}} onClick={()=>setShowImport(v=>!v)}>{showImport ? 'Annuler import' : 'Importer depuis tableur'}</button>
+        {showImport && (
+          <form onSubmit={handleImport} style={{marginBottom:18, background:'#eafaf2', borderRadius:8, padding:16, display:'flex', flexDirection:'column', gap:10, maxWidth:400}}>
+            <label><b>Fichier Excel (.xlsx)</b> : <input type="file" accept=".xlsx" onChange={e=>setImportFile(e.target.files[0])} /></label>
+            <label>Année : <input type="number" value={importYear} onChange={e=>setImportYear(e.target.value)} min="2000" max="2100" style={{marginLeft:8, width:90}} /></label>
+            <label>Type :
+              <select value={importType} onChange={e=>setImportType(e.target.value)} style={{marginLeft:8}}>
+                <option value="faune">Faune</option>
+                <option value="flore">Flore</option>
+                <option value="autre">Autre</option>
+              </select>
+            </label>
+            <button className="btn" type="submit">Importer</button>
+            {importMsg && <div style={{color: importMsg.startsWith('Erreur') ? 'red' : 'green', marginTop:8}}>{importMsg}</div>}
+          </form>
+        )}
+        <form onSubmit={handleAddReleve} style={{display:'flex', gap:8, marginBottom:18, flexWrap:'wrap', alignItems:'center'}}>
+          <select value={releveType} onChange={e=>setReleveType(e.target.value)} style={{fontSize:'1rem', padding:'6px 10px', borderRadius:6}}>
+            <option value="faune">🦋 Faune</option>
+            <option value="flore">🌸 Flore</option>
+            <option value="autre">🍄 Autre</option>
+          </select>
+          <input type="text" placeholder="Nom" value={releveNom} onChange={e=>setReleveNom(e.target.value)} style={{fontSize:'1rem', padding:'6px 10px', borderRadius:6, minWidth:120}} />
+          <input type="text" placeholder="Description" value={releveDesc} onChange={e=>setReleveDesc(e.target.value)} style={{fontSize:'1rem', padding:'6px 10px', borderRadius:6, minWidth:180}} />
+          <button className="btn" type="submit">Ajouter</button>
+        </form>
+        <table style={{width:'100%', borderCollapse:'collapse', background:'#f8fafc', borderRadius:10, boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
+          <thead>
+            <tr style={{background:'#eafaf2'}}>
+              <th style={{padding:'8px'}}>Type</th>
+              <th style={{padding:'8px'}}>Nom</th>
+              <th style={{padding:'8px'}}>Description</th>
+              <th style={{padding:'8px'}}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {releves.map(r => (
+              <tr key={r.id}>
+                <td style={{padding:'8px', fontWeight:600, fontSize:'1.1rem'}}>{r.type === 'plante' ? '🌿' : r.type === 'faune' ? '🦋' : r.type === 'flore' ? '🌸' : '🍄'} {r.type}</td>
+                <td style={{padding:'8px', fontWeight:700}}>{r.nom}</td>
+                <td style={{padding:'8px'}}>{r.description}</td>
+                <td style={{padding:'8px'}}>
+                  <button className="btn" style={{background:'#e57373'}} onClick={()=>handleDeleteReleve(r.id)}>Supprimer</button>
+                </td>
+              </tr>
+            ))}
+            {releves.length === 0 && <tr><td colSpan={4} style={{textAlign:'center', color:'#888', padding:'18px'}}>Aucun relevé pour cette année.</td></tr>}
+          </tbody>
+        </table>
+        <button className="btn" style={{marginTop:18}} onClick={()=>setAdminTab('')}>Retour</button>
+        {error && <div style={{color:'red', marginTop:12}}>{error}</div>}
       </div>
     );
   }
@@ -574,32 +756,265 @@ function Admin() {
 }
 
 function Contact() {
-  // Responsive style
   const isMobile = window.innerWidth <= 700;
+  const partenaires = [
+    {
+      title: 'Partenaire 1',
+      description: 'Lorem Ipsum...',
+      image: '/partenaires/1.jpg',
+      link: 'https://example.com/'
+    },
+    {
+      title: 'Partenaire 2',
+      description: 'Lorem Ipsum...',
+      image: '/partenaires/2.jpg',
+      link: 'https://example.com/'
+    },
+    {
+      title: 'Partenaire 3',
+      description: 'Lorem Ipsum...',
+      image: '/partenaires/3.jpg',
+      link: 'https://example.com/'
+    },
+    {
+      title: 'Partenaire 4',
+      description: 'Lorem Ipsum...',
+      image: '/partenaires/4.jpg',
+      link: 'https://example.com/'
+    }
+  ];
+
   return (
     <div className="container" style={{
-      maxWidth: isMobile ? '98vw' : 500,
+      maxWidth: isMobile ? '98vw' : 1200,
       marginTop: isMobile ? 18 : 48,
       marginBottom: isMobile ? 18 : 48,
-      padding: isMobile ? '14px 2vw' : undefined,
+      padding: isMobile ? '14px 2vw' : '32px',
       borderRadius: isMobile ? 8 : 14,
       fontSize: isMobile ? '1.01rem' : '1.1rem',
-      boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : undefined,
-      background: isMobile ? '#fff' : undefined,
+      boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.08)',
+      background: '#fff',
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      gap: isMobile ? 32 : 48,
     }}>
-      <h2 style={{marginBottom: isMobile ? 14 : 24, color: '#1a7f5a', fontSize: isMobile ? '1.25rem' : undefined}}>Contact</h2>
-      <div style={{fontSize: isMobile ? '1rem' : '1.1rem', marginBottom: isMobile ? 12 : 18}}>
-        <strong>Téléphone :</strong> <a href="tel:0248503175" style={{color:'#1a7f5a', textDecoration:'none', fontSize: isMobile ? '1rem' : undefined}}>02.48.50.31.75</a><br/>
-        <strong>Email :</strong> <a href="mailto:info@mille-univers.net" style={{color:'#1a7f5a', textDecoration:'none', fontSize: isMobile ? '1rem' : undefined}}>info@mille-univers.net</a>
+      {/* Colonne de gauche - Mille Univers */}
+      <div style={{
+        flex: 1,
+        background: '#f8fafc',
+        borderRadius: 12,
+        padding: isMobile ? 20 : 32,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: isMobile ? 20 : 28,
+          paddingBottom: 16,
+          borderBottom: '2px solid #eafaf2',
+        }}>
+          <a 
+            href="https://mille-univers.net/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: '#1a7f5a',
+              fontWeight: 800,
+              fontSize: isMobile ? '1.4rem' : '1.6rem',
+              textDecoration: 'none',
+              transition: 'color 0.2s',
+            }}
+            onMouseOver={e => e.target.style.color = '#2ecc71'}
+            onMouseOut={e => e.target.style.color = '#1a7f5a'}
+          >Les mille univers</a>
+        </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? 16 : 24,
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: '#fff',
+            padding: '12px 16px',
+            borderRadius: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          }}>
+            <span style={{fontSize: '1.4rem'}}>📞</span>
+            <div>
+              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Téléphone</div>
+              <a href="tel:0248503175" style={{
+                color: '#444',
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: isMobile ? '1rem' : '1.1rem',
+                transition: 'color 0.2s',
+              }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
+                02.48.50.31.75
+              </a>
+            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            background: '#fff',
+            padding: '12px 16px',
+            borderRadius: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          }}>
+            <span style={{fontSize: '1.4rem'}}>✉️</span>
+            <div>
+              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Email</div>
+              <a href="mailto:info@mille-univers.net" style={{
+                color: '#444',
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: isMobile ? '1rem' : '1.1rem',
+                transition: 'color 0.2s',
+              }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
+                info@mille-univers.net
+              </a>
+            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            background: '#fff',
+            padding: '12px 16px',
+            borderRadius: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          }}>
+            <span style={{fontSize: '1.4rem'}}>📍</span>
+            <div>
+              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Adresse</div>
+              <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
+                32 bis, route de la Chapelle<br/>
+                18000 Bourges
+              </div>
+            </div>
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            background: '#fff',
+            padding: '12px 16px',
+            borderRadius: 8,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+          }}>
+            <span style={{fontSize: '1.4rem'}}>🕒</span>
+            <div>
+              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Horaires</div>
+              <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
+                Lundi – Mercredi : 8h30 à 12h30, de 13h30 à 18h30<br/>
+                Jeudi : 8h30 à 12h30, de 13h30 à 17h30
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div style={{marginBottom: isMobile ? 12 : 18, fontSize: isMobile ? '0.98rem' : undefined}}>
-        <strong>Adresse :</strong><br/>
-        32 B Route de la Chapelle,<br/>18000 Bourges
-      </div>
-      <div style={{fontSize: isMobile ? '0.98rem' : undefined}}>
-        <strong>Horaires :</strong><br/>
-        Lundi – Mercredi : 8h30 à 12h30, de 13h30 à 18h30<br/>
-        Jeudi : 8h30 à 12h30, de 13h30 à 17h30
+
+      {/* Colonne de droite - Partenaires */}
+      <div style={{
+        flex: 1,
+        background: '#f8fafc',
+        borderRadius: 12,
+        padding: isMobile ? 20 : 32,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: isMobile ? 20 : 28,
+          paddingBottom: 16,
+          borderBottom: '2px solid #eafaf2',
+        }}>
+          <span style={{
+            color: '#1a7f5a',
+            fontWeight: 800,
+            fontSize: isMobile ? '1.4rem' : '1.6rem',
+          }}>Partenaires</span>
+        </div>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? 16 : 24,
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+            gap: 16,
+          }}>
+            {partenaires.map((partner, i) => (
+              <a
+                key={i}
+                href={partner.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: '#fff',
+                  padding: '24px',
+                  borderRadius: 8,
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+                onMouseOver={e => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                }}
+                onMouseOut={e => {
+                  e.target.style.transform = 'none';
+                  e.target.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
+                }}
+              >
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  background: '#f8fafc',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  border: '2px solid #eafaf2',
+                }}>
+                  <img 
+                    src={partner.image} 
+                    alt={partner.title}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+                <div style={{
+                  color: '#1a7f5a',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                }}>{partner.title}</div>
+                <div style={{
+                  color: '#666',
+                  fontSize: '0.9rem',
+                }}>{partner.description}</div>
+              </a>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -674,7 +1089,28 @@ function TiersPaysage() {
   const isMobile = window.innerWidth <= 700;
   return (
     <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
+      <div style={{
+        width: '100%',
+        height: isMobile ? 300 : 400,
+        marginBottom: 32,
+        borderRadius: 12,
+        overflow: 'hidden',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+      }}>
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2689.1234567890123!2d2.3968!3d47.0847!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47fa967e5f0e0f0f%3A0x0!2s32%20Bis%20Route%20de%20la%20Chapelle%2C%2018000%20Bourges!5e0!3m2!1sfr!2sfr!4v1234567890"
+          width="100%"
+          height="100%"
+          style={{ border: 0 }}
+          allowFullScreen=""
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        ></iframe>
+      </div>
+
       <h2 style={{fontWeight:800, fontSize: isMobile ? '2rem' : '2.1rem', marginBottom:12, color:'#1a7f5a'}}>Le Tiers paysage</h2>
+
+
       <div style={{fontSize:'1.15rem', lineHeight:1.7, textAlign:'justify', marginBottom:24}}>
         <p style={{background:'#eafaf2', borderRadius:10, padding:'14px 18px', marginBottom:24}}><b>Le Tiers paysage de Bourges</b> est un espace naturel d'environ un hectare, laissé en libre évolution&nbsp;: ici, la nature s'exprime sans intervention humaine, offrant un refuge à la biodiversité locale. Ce site, que l'on ne "touche pas", est le sujet de ce site web et une invitation à observer la richesse du vivant quand on laisse faire la nature.</p>
         <p><b>Le Tiers paysage</b> est un concept développé par Gilles Clément pour désigner l'ensemble des espaces délaissés, non exploités ou laissés à l'abandon par l'homme&nbsp;: friches, bords de route, talus, ruines, berges, interstices urbains…</p>
@@ -692,50 +1128,215 @@ function TiersPaysage() {
           «&nbsp;Le Tiers paysage, c'est l'espace du possible, le territoire de l'inattendu, le réservoir de la diversité.&nbsp;»
         </div>
       <div style={{display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, justifyContent: 'center', alignItems: 'center', margin: '32px 0'}}>
-        <img
-          src="/croquis2.png"
-          alt="Croquis Tiers paysage 2"
-          style={{
-            maxWidth: isMobile ? '99vw' : 340,
-            width: '100%',
-            borderRadius: 10,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
-            marginBottom: isMobile ? 16 : 0,
-            cursor: 'zoom-in',
-            transition: 'transform 0.2s'
-          }}
-          onClick={e => {
-            const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = 0;
-            modal.style.left = 0;
-            modal.style.width = '100vw';
-            modal.style.height = '100vh';
-            modal.style.background = 'rgba(0,0,0,0.85)';
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-            modal.style.zIndex = 9999;
-            modal.style.cursor = 'zoom-out';
-            modal.onclick = () => document.body.removeChild(modal);
+        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+          <img
+            src="/croquis2.png"
+            alt="Croquis Tiers paysage 2"
+            style={{
+              maxWidth: isMobile ? '99vw' : 340,
+              width: '100%',
+              borderRadius: 10,
+              boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+              marginBottom: isMobile ? 16 : 0,
+              cursor: 'zoom-in',
+              transition: 'transform 0.2s'
+            }}
+            onClick={e => {
+              const modal = document.createElement('div');
+              modal.style.position = 'fixed';
+              modal.style.top = 0;
+              modal.style.left = 0;
+              modal.style.width = '100vw';
+              modal.style.height = '100vh';
+              modal.style.background = 'rgba(0,0,0,0.85)';
+              modal.style.display = 'flex';
+              modal.style.alignItems = 'center';
+              modal.style.justifyContent = 'center';
+              modal.style.zIndex = 9999;
+              modal.style.cursor = 'zoom-out';
+              modal.onclick = () => document.body.removeChild(modal);
 
-            const img = document.createElement('img');
-            img.src = 'croquis2.png';
-            img.alt = "Croquis Tiers paysage 2";
-            img.style.maxWidth = '96vw';
-            img.style.maxHeight = '92vh';
-            img.style.borderRadius = '14px';
-            img.style.boxShadow = '0 4px 32px rgba(0,0,0,0.25)';
-            img.style.background = '#fff';
-            img.onclick = ev => ev.stopPropagation();
+              const img = document.createElement('img');
+              img.src = 'croquis2.png';
+              img.alt = "Croquis Tiers paysage 2";
+              img.style.maxWidth = '96vw';
+              img.style.maxHeight = '92vh';
+              img.style.borderRadius = '14px';
+              img.style.boxShadow = '0 4px 32px rgba(0,0,0,0.25)';
+              img.style.background = '#fff';
+              img.onclick = ev => ev.stopPropagation();
 
-            modal.appendChild(img);
-            document.body.appendChild(modal);
-          }}
-        />
+              modal.appendChild(img);
+              document.body.appendChild(modal);
+            }}
+          />
+          <div style={{fontSize: '0.8rem', color: '#666', marginTop: 8, fontStyle: 'italic'}}>© Gilles Clément 2023</div>
+        </div>
       </div>
       </div>
       <a className="btn" href="https://www.gillesclement.com/files/974_manifeste-du-tiers-paysage.pdf" target="_blank" rel="noopener noreferrer">En savoir plus</a>
+    </div>
+  );
+}
+
+function Releve() {
+  const [annee, setAnnee] = useState(new Date().getFullYear());
+  const [releves, setReleves] = useState([]);
+  const [relevesPrev, setRelevesPrev] = useState([]);
+  const [relevesBeforePrev, setRelevesBeforePrev] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      axios.get(`${API_URL}/api/releves?annee=${annee}`),
+      axios.get(`${API_URL}/api/releves?annee=${annee-1}`),
+      axios.get(`${API_URL}/api/releves?annee=${annee-2}`)
+    ]).then(([res, prev, beforePrev]) => {
+      setReleves(res.data);
+      setRelevesPrev(prev.data);
+      setRelevesBeforePrev(beforePrev.data);
+      setLoading(false);
+    });
+  }, [annee]);
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = currentYear + 1; y >= 2023; y--) years.push(y);
+  const prevSet = new Set(relevesPrev.map(r => r.type+':'+r.nom));
+  const currSet = new Set(releves.map(r => r.type+':'+r.nom));
+  const beforePrevSet = new Set(relevesBeforePrev.map(r => r.type+':'+r.nom));
+  const typeOrder = { plante: 1, faune: 2, flore: 3, autre: 4 };
+  const sorted = [...releves].sort((a, b) => typeOrder[a.type]-typeOrder[b.type] || a.nom.localeCompare(b.nom));
+  const disparus = relevesPrev.filter(r => !currSet.has(r.type+':'+r.nom));
+  const reapparus = releves.filter(r => !prevSet.has(r.type+':'+r.nom) && beforePrevSet.has(r.type+':'+r.nom));
+  const getStatus = r => {
+    const isNouveau = !prevSet.has(r.type+':'+r.nom);
+    const isReapparu = !prevSet.has(r.type+':'+r.nom) && beforePrevSet.has(r.type+':'+r.nom);
+    if (isNouveau && !isReapparu) return 'nouveau';
+    if (isReapparu) return 'reapparu';
+    return 'normal';
+  };
+  let filtered = sorted.filter(r => {
+    // Convertir les anciens types "plante" en "flore"
+    const effectiveType = r.type === 'plante' ? 'flore' : r.type;
+    if (typeFilter !== 'all' && effectiveType !== typeFilter) return false;
+    if (statusFilter !== 'all') {
+      const s = getStatus(r);
+      if (statusFilter === 'nouveau' && s !== 'nouveau') return false;
+      if (statusFilter === 'reapparu' && s !== 'reapparu') return false;
+      if (statusFilter === 'disparu') return false;
+      if (statusFilter === 'normal' && (s === 'nouveau' || s === 'reapparu')) return false;
+    }
+    if (search) {
+      const searchLower = search.toLowerCase();
+      return r.nom.toLowerCase().includes(searchLower) || 
+             (r.description && r.description.toLowerCase().includes(searchLower));
+    }
+    return true;
+  });
+
+  // Filtrer les disparus en fonction du type
+  const filteredDisparus = disparus.filter(r => {
+    const effectiveType = r.type === 'plante' ? 'flore' : r.type;
+    return typeFilter === 'all' || effectiveType === typeFilter;
+  });
+
+  const total = sorted.length;
+  const totalDisparus = filteredDisparus.length;
+  const totalNouveaux = sorted.filter(r => !prevSet.has(r.type+':'+r.nom)).length;
+  const totalReapparus = reapparus.length;
+  return (  
+    <div className="container">
+      <h2 style={{fontWeight:800, fontSize:'2rem', marginBottom:18, color:'#1a7f5a', display:'flex', alignItems:'center', gap:10}}><span role="img" aria-label="relevé">🌱</span> Relevé flore & faune 🦔</h2>
+      <div style={{display:'flex', alignItems:'center', gap:18, marginBottom:18}}>
+        <div>
+          <label>Année : </label>
+          <select value={annee} onChange={e=>setAnnee(Number(e.target.value))} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Type : </label>
+          <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+            <option value="all">Tous</option>
+            <option value="faune">Faune</option>
+            <option value="flore">Flore</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div>
+          <label>Statut : </label>
+          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+            <option value="all">Tous</option>
+            <option value="nouveau">Nouveaux</option>
+            <option value="reapparu">Réapparus</option>
+            <option value="disparu">Disparus</option>
+            <option value="normal">Déjà présents</option>
+          </select>
+        </div>
+        <div>
+          <input type="text" placeholder="Recherche par nom..." value={search} onChange={e=>setSearch(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}} />
+        </div>
+      </div>
+      <div style={{display:'flex', gap:18, marginBottom:18, flexWrap:'wrap'}}>
+        <span style={{background:'#eafaf2', color:'#1a7f5a', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Total : {total}</span>
+        <span style={{background:'#ffecb3', color:'#ff9800', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Nouveau{totalNouveaux > 1 ? 'x' : ''} : {totalNouveaux}</span>
+        <span style={{background:'#e3fcef', color:'#388e3c', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Réapparu{totalReapparus > 1 ? 's' : ''} : {totalReapparus}</span>
+        <span style={{background:'#ffcdd2', color:'#b71c1c', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Disparu{totalDisparus > 1 ? 's' : ''} : {totalDisparus}</span>
+      </div>
+      {loading ? <div style={{color:'#888'}}>Chargement...</div> : (
+        <>
+        {filtered.length === 0 ? <div style={{color:'#888', fontSize:'1.1rem', margin:'32px 0'}}>Aucun relevé pour cette année.</div> :
+        <div style={{display:'flex', flexDirection:'column', gap:14}}>
+          {filtered.map(r => {
+            const isNouveau = !prevSet.has(r.type+':'+r.nom);
+            const isReapparu = reapparus.some(x => x.type === r.type && x.nom === r.nom);
+            let emoji = r.type === 'plante' ? '🌿' : r.type === 'faune' ? '🦋' : r.type === 'flore' ? '🌸' : '🍄';
+            return (
+              <div key={r.id} style={{display:'flex', alignItems:'center', background:'#f8fafc', borderRadius:10, boxShadow:'0 2px 8px rgba(0,0,0,0.06)', padding:'14px 18px', gap:18, position:'relative'}}>
+                <span style={{fontSize:'2rem', marginRight:8}}>{emoji}</span>
+                <span style={{fontWeight:700, fontSize:'1.15rem', color:'#1a7f5a'}}>{r.nom}</span>
+                <span style={{color:'#888', fontSize:'1.05rem', marginLeft:8}}>{r.type}</span>
+                <span style={{marginLeft:18, color:'#444', fontSize:'1.05rem'}}>{r.description}</span>
+                {isNouveau && !isReapparu && (
+                  <span style={{background:'#ffb300', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>nouveau</span>
+                )}
+                {isReapparu && (
+                  <span style={{background:'#1a7f5a', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>réapparu en {annee}</span>
+                )}
+                {r.protege && (
+                  <span style={{background:'#2196f3', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>protégé</span>
+                )}
+                <span style={{marginLeft:18, color:'#888', fontSize:'0.98rem'}}>{r.annee}</span>
+              </div>
+            );
+          })}
+        </div>}
+        {/* Affichage des disparus quand les filtres sont sur "tout" ou quand le filtre est sur "disparu" */}
+        {(statusFilter === 'all' || statusFilter === 'disparu') && filteredDisparus.length > 0 && (
+          <div style={{marginTop:32}}>
+            <h3 style={{color:'#b71c1c', fontWeight:700, fontSize:'1.15rem', marginBottom:12}}>Disparus en {annee}</h3>
+            <div style={{display:'flex', flexDirection:'column', gap:14}}>
+              {filteredDisparus.map(r => {
+                let emoji = r.type === 'plante' ? '🌿' : r.type === 'faune' ? '🦋' : r.type === 'flore' ? '🌸' : '🍄';
+                return (
+                  <div key={r.type+':'+r.nom} style={{display:'flex', alignItems:'center', background:'#fff3e0', borderRadius:10, boxShadow:'0 2px 8px rgba(0,0,0,0.06)', padding:'14px 18px', gap:18, position:'relative'}}>
+                    <span style={{fontSize:'2rem', marginRight:8}}>{emoji}</span>
+                    <span style={{fontWeight:700, fontSize:'1.15rem', color:'#b71c1c'}}>{r.nom}</span>
+                    <span style={{color:'#888', fontSize:'1.05rem', marginLeft:8}}>{r.type}</span>
+                    <span style={{background:'#b71c1c', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>disparu en {annee}</span>
+                    <span style={{marginLeft:18, color:'#444', fontSize:'1.05rem'}}>{r.description}</span>
+                    <span style={{marginLeft:18, color:'#888', fontSize:'0.98rem'}}>{r.annee}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        </>
+      )}
     </div>
   );
 }
@@ -747,6 +1348,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/nouveautes" element={<Nouveautes />} />
+        <Route path="/releve" element={<Releve />} />
         <Route path="/tiers-paysage" element={<TiersPaysage />} />
         <Route path="/document/:id" element={<DocumentDetail />} />
         <Route path="/admin" element={<Admin />} />
