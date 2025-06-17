@@ -211,26 +211,145 @@ footer {
   .container {
     padding: 8px 1vw;
     margin: 16px 0 0 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
   }
-  .navbar {
-    padding: 0 8px;
-    height: 54px;
+  .navbar, .navbar.navbar-home {
+    padding: 0 4px;
+    height: 64px;
+    min-height: 64px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 1000;
+  }
+  .navbar .logo {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1a7f5a;
+    letter-spacing: -1px;
+    z-index: 1001;
+    background: transparent;
+    padding: 8px 0;
+  }
+  .navbar nav {
+    flex-direction: column;
+    gap: 0;
+    width: 100vw;
+    background: rgba(255,255,255,0.95);
+    position: absolute;
+    top: 48px;
+    left: 0;
+    display: none;
+  }
+  .navbar.open nav {
+    display: flex;
+  }
+  .navbar a {
+    font-size: 0.98rem;
+    padding: 10px 18px;
+    width: 100vw;
+    border-radius: 0;
+    text-align: left;
   }
   .card {
     width: 100%;
     min-width: 0;
+    border-radius: 8px;
   }
   .card-list {
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+  }
+  .btn {
+    font-size: 0.98rem;
+    padding: 8px 12px;
+    border-radius: 5px;
+  }
+  .carousel-slide-container {
+    height: 260px;
+    margin-left: 0;
+  }
+  .carousel-slide-box, .carousel-slide-card {
+    min-width: 92vw;
+    max-width: 92vw;
+    padding: 8px 2vw;
+    margin-left: 0;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+  .carousel-slide-box h1, .carousel-slide-card h1 {
+    font-size: 1rem !important;
+    margin-bottom: 10px !important;
+  }
+  .carousel-slide-box {
+    left: 0 !important;
+    margin-left: 0 !important;
+  }
+  .gallery img {
+    max-height: 90px;
+  }
+  .barre-chargement {
+    height: 3px !important;
+    left: 0 !important;
+    width: 100vw !important;
+    min-width: 0 !important;
+    border-radius: 0 !important;
+  }
+  .burger-menu {
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
+    z-index: 9999 !important;
+    display: block !important;
+    background: rgba(255,255,255,0.85);
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+  .burger-menu span {
+    background: #1a7f5a !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  }
+  .navbar.navbar-home {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .navbar.open nav {
+    background: rgba(255,255,255,0.97);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   }
 }
-.navbar-home {
-  background: rgba(255,255,255,0.12) !important;
-  box-shadow: none !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: background 0.2s;
+@media (max-width: 500px) {
+  .container {
+    padding: 4px 0.5vw;
+    border-radius: 5px;
+  }
+  .navbar {
+    height: 44px;
+  }
+  .navbar .logo {
+    font-size: 0.98rem;
+  }
+  .btn {
+    font-size: 0.93rem;
+    padding: 7px 8px;
+  }
+  .carousel-slide-box, .carousel-slide-card {
+    padding: 10px 1vw;
+    font-size: 0.93rem;
+    border-radius: 7px;
+  }
+  .carousel-slide-box h1, .carousel-slide-card h1 {
+    font-size: 1.08rem !important;
+  }
 }
 
 .navbar a, .btn, .navbar .logo, .card .btn, .container a, .container .btn {
@@ -316,4 +435,12 @@ footer {
 @keyframes slideBoxIn {
   0% { transform: translateX(100vw); opacity: 0.7; }
   100% { transform: translateX(0); opacity: 1; }
+}
+
+.carousel-slide-box .btn, .carousel-slide-card .btn {
+  width: auto !important;
+  min-width: 0 !important;
+  display: inline-block !important;
+  align-self: unset !important;
+  margin: 0 !important;
 }

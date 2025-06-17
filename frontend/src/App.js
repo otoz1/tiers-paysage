@@ -6,11 +6,10 @@ import 'react-quill/dist/quill.snow.css';
 import './App.css';
 import gillesClementImg from './gilles-clement.png';
 import ecoleJardinImg from './ecole-jardin.png';
-import croquis1Img from './croquis1.png';
-import croquis2Img from './croquis2.png';
+import ReactDOM from 'react-dom';
 
 
-const API_URL = 'http://localhost:4000';
+const API_URL = 'http://192.168.94.141:4000'; 
 
 function useBodyClass(className, active, bgImage) {
   useEffect(() => {
@@ -42,18 +41,89 @@ function useBodyClass(className, active, bgImage) {
 function Navbar() {
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 700);
+  useEffect(() => {
+    setMenuOpen(false);
+    const handleResize = () => setIsMobile(window.innerWidth <= 700);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  const burgerButton = isMobile && ReactDOM.createPortal(
+    <button
+      className="burger-menu"
+      aria-label="Ouvrir le menu"
+      onClick={() => setMenuOpen(o => !o)}
+      style={{
+        background: '#fff',
+        border: 'none',
+        borderRadius: '50%',
+        cursor: 'pointer',
+        marginLeft: 8,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.13)',
+        width: 38,
+        height: 38,
+        position: 'fixed',
+        top: 10,
+        right: 10,
+        zIndex: 99999,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 0,
+        transition: 'box-shadow 0.18s',
+      }}
+      onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 18px rgba(0,0,0,0.18)'}
+      onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.13)'}
+    >
+      <span style={{display:'block', width:22, height:4, background:'#1a7f5a', borderRadius:3, margin:'3px auto'}}></span>
+      <span style={{display:'block', width:14, height:4, background:'#1a7f5a', borderRadius:3, margin:'3px auto'}}></span>
+      <span style={{display:'block', width:22, height:4, background:'#1a7f5a', borderRadius:3, margin:'3px auto'}}></span>
+    </button>,
+    document.body
+  );
+  const handleNavClick = () => { if (isMobile) setMenuOpen(false); };
   return (
-    <div className={`navbar${isHome ? ' navbar-home' : ''}`}>
-      <Link className="logo" to="/">Tiers paysage Bourges</Link>
-      <nav>
-        <Link className={isHome ? 'active' : ''} to="/">Accueil</Link>
-        <Link className={location.pathname==='/nouveautes' ? 'active' : ''} to="/nouveautes">Actualités</Link>
-        <Link className={location.pathname==='/tiers-paysage' ? 'active' : ''} to="/tiers-paysage">Tiers paysage</Link>
-        <Link className={location.pathname==='/gilles-clement' ? 'active' : ''} to="/gilles-clement">Gilles Clément</Link>
-        <Link className={location.pathname==='/ecole-jardin-planetaire' ? 'active' : ''} to="/ecole-jardin-planetaire">École du Jardin Planétaire</Link>
-        <Link className={location.pathname==='/contact' ? 'active' : ''} to="/contact">Contact</Link>
-      </nav>
-    </div>
+    <>
+      <div className={`navbar${isHome ? ' navbar-home' : ''}${menuOpen ? ' open' : ''}`}
+        style={isMobile ? {
+          height: isHome ? 72 : 64,
+          minHeight: isHome ? 72 : 64,
+          background: '#fff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          width: '100vw',
+          zIndex: 1000,
+          margin: 0,
+          padding: 0
+        } : {}}>
+        <Link className="logo" to="/" style={isMobile ? {
+          fontSize: '1.6rem',
+          fontWeight: 800,
+          color: '#1a7f5a',
+          letterSpacing: '-1px',
+          zIndex: 1001,
+          background: 'transparent',
+          padding: isHome ? '12px 16px' : '8px 16px',
+          display: 'block',
+        } : {}}>
+          Tiers paysage Bourges
+        </Link>
+        <nav>
+          <Link className={isHome ? 'active' : ''} to="/" onClick={handleNavClick}>Accueil</Link>
+          <Link className={location.pathname==='/nouveautes' ? 'active' : ''} to="/nouveautes" onClick={handleNavClick}>Actualités</Link>
+          <Link className={location.pathname==='/tiers-paysage' ? 'active' : ''} to="/tiers-paysage" onClick={handleNavClick}>Tiers paysage</Link>
+          <Link className={location.pathname==='/gilles-clement' ? 'active' : ''} to="/gilles-clement" onClick={handleNavClick}>Gilles Clément</Link>
+          <Link className={location.pathname==='/ecole-jardin-planetaire' ? 'active' : ''} to="/ecole-jardin-planetaire" onClick={handleNavClick}>École du Jardin Planétaire</Link>
+          <Link className={location.pathname==='/contact' ? 'active' : ''} to="/contact" onClick={handleNavClick}>Contact</Link>
+        </nav>
+      </div>
+      {burgerButton}
+    </>
   );
 }
 
@@ -64,6 +134,7 @@ function Home() {
   const [sliding, setSliding] = useState(false);
   const [bgImage, setBgImage] = useState('');
   const [progress, setProgress] = useState(0);
+  const isMobile = window.innerWidth <= 700;
   useBodyClass('home-bg', true);
   useEffect(() => {
     axios.get(`${API_URL}/api/documents`).then(res => setDocuments(res.data));
@@ -143,63 +214,106 @@ function Home() {
           animation: 'slide-bg-left 0.6s cubic-bezier(.4,0,.2,1) forwards',
         }} />
       )}
-      <div style={{position:'relative', width:'100vw', height:420, display:'flex', alignItems:'center'}}>
+      <div style={{
+        position:'relative',
+        width:'100vw',
+        height: isMobile ? '100vh' : 420,
+        display:'flex',
+        alignItems:'center',
+        justifyContent: isMobile ? 'center' : 'flex-start',
+      }}>
         <div
           className={sliding ? 'carousel-slide-box slide-left' : 'carousel-slide-box'}
           style={{
-            position:'absolute',
-            left:0,
-            top:0,
+            position: isMobile ? 'relative' : 'absolute',
+            left: isMobile ? undefined : 0,
+            top: isMobile ? undefined : 0,
             zIndex:2,
             textAlign:'left',
             color:'#fff',
-            padding:'48px 40px',
-            borderRadius:20,
+            padding: isMobile ? '8px 8px' : '48px 40px',
+            borderRadius: isMobile ? 10 : 20,
             background:'rgba(0,0,0,0.32)',
-            maxWidth:420,
-            marginLeft:'7vw',
-            boxShadow:'0 8px 32px rgba(0,0,0,0.18)',
-            width:'100%',
+            maxWidth: isMobile ? 240 : 420,
+            minWidth: isMobile ? 120 : undefined,
+            margin: 0,
+            marginLeft: isMobile ? 0 : '7vw',
+            boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.10)' : '0 8px 32px rgba(0,0,0,0.18)',
+            overflow: 'hidden',
+            wordBreak: 'break-word',
             backdropFilter: 'blur(4px)',
             WebkitBackdropFilter: 'blur(4px)',
             transition: 'none',
+            fontSize: isMobile ? '0.97rem' : undefined,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            justifyContent: 'center',
+            alignSelf: isMobile ? 'center' : undefined,
           }}
         >
-          <div style={{fontWeight:700, fontSize:'1.1rem', marginBottom:10}}>Dernière actualité</div>
-          <h1 style={{fontSize:'2.3rem', fontWeight:700, marginBottom:18}}>{currDoc?.title}</h1>
-          <div style={{fontSize:'1.15rem', marginBottom:28, color:'#e0e0e0'}}>
-            <span style={{fontWeight:700}}>{currExcerpt.boldPart}</span>{currExcerpt.rest}{currExcerpt.isLong && '...'}
+          <div style={{fontWeight:800, fontSize: isMobile ? '1.15rem' : '1.1rem', marginBottom:12, color:'#fff', textAlign:'left'}}>Dernière actualité</div>
+          <h2 style={{fontSize: isMobile ? '1.25rem' : '2.3rem', fontWeight:700, marginBottom:14, color:'#fff', textAlign:'left', lineHeight:1.2}}>{currDoc?.title}</h2>
+          <div style={{fontSize: isMobile ? '0.98rem' : '1.15rem', marginBottom:18, color:'#f8fafd', textShadow:'0 1px 8px rgba(0,0,0,0.18)', textAlign:'left'}}>
+            <span style={{fontWeight:700, color:'#fff'}}>{currExcerpt.boldPart}</span>{currExcerpt.rest}{currExcerpt.isLong && '...'}
           </div>
-          {currDoc && <Link className="btn" style={{fontSize:'1.1rem', padding:'13px 30px'}} to={`/document/${currDoc.id}`}>En savoir plus</Link>}
+          {currDoc && <Link className="btn" style={isMobile ? {
+            fontSize: '0.98rem',
+            padding: '8px 8px',
+            background:'#fff',
+            color:'#1a7f5a',
+            fontWeight:700,
+            boxShadow:'0 1px 6px rgba(0,0,0,0.10)',
+            alignSelf:'flex-end',
+            margin:'0'
+          } : {}} to={`/document/${currDoc.id}`}>En savoir plus</Link>}
         </div>
         {sliding && nextDoc && (
           <div
             className="carousel-slide-box slide-in"
             style={{
-              position:'absolute',
-              left:0,
-              top:0,
+              position: isMobile ? 'relative' : 'absolute',
+              left: isMobile ? undefined : 0,
+              top: isMobile ? undefined : 0,
               zIndex:2,
               textAlign:'left',
               color:'#fff',
-              padding:'48px 40px',
-              borderRadius:20,
+              padding: isMobile ? '8px 8px' : '48px 40px',
+              borderRadius: isMobile ? 10 : 20,
               background:'rgba(0,0,0,0.32)',
-              maxWidth:420,
-              marginLeft:'7vw',
-              boxShadow:'0 8px 32px rgba(0,0,0,0.18)',
-              width:'100%',
+              maxWidth: isMobile ? 240 : 420,
+              minWidth: isMobile ? 120 : undefined,
+              margin: 0,
+              marginLeft: isMobile ? 0 : '7vw',
+              boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.10)' : '0 8px 32px rgba(0,0,0,0.18)',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
               backdropFilter: 'blur(4px)',
               WebkitBackdropFilter: 'blur(4px)',
               transition: 'none',
+              fontSize: isMobile ? '0.97rem' : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              justifyContent: 'center',
+              alignSelf: isMobile ? 'center' : undefined,
             }}
           >
-            <div style={{fontWeight:700, fontSize:'1.1rem', marginBottom:10}}>Dernière actualité</div>
-            <h1 style={{fontSize:'2.3rem', fontWeight:700, marginBottom:18}}>{nextDoc.title}</h1>
-            <div style={{fontSize:'1.15rem', marginBottom:28, color:'#e0e0e0'}}>
+            <div style={{fontWeight:700, fontSize: isMobile ? '1rem' : '1.1rem', marginBottom:10}}>Dernière actualité</div>
+            <h2 style={{fontSize: isMobile ? '2.5rem' : '2.3rem', fontWeight:700, marginBottom:18}}>{nextDoc.title}</h2>
+            <div style={{fontSize: isMobile ? '1rem' : '1.15rem', marginBottom:28, color:'#e0e0e0'}}>
               <span style={{fontWeight:700}}>{nextExcerpt.boldPart}</span>{nextExcerpt.rest}{nextExcerpt.isLong && '...'}
             </div>
-            <Link className="btn" style={{fontSize:'1.1rem', padding:'13px 30px'}} to={`/document/${nextDoc.id}`}>En savoir plus</Link>
+            <Link className="btn" style={isMobile ? {
+              fontSize: '0.98rem',
+              padding: '8px 8px',
+              background:'#fff',
+              color:'#1a7f5a',
+              fontWeight:700,
+              boxShadow:'0 1px 6px rgba(0,0,0,0.10)',
+              alignSelf:'flex-end',
+              margin:'0'
+            } : {}} to={`/document/${nextDoc.id}`}>En savoir plus</Link>
           </div>
         )}
       </div>
@@ -460,18 +574,29 @@ function Admin() {
 }
 
 function Contact() {
+  // Responsive style
+  const isMobile = window.innerWidth <= 700;
   return (
-    <div className="container" style={{maxWidth: 500, marginTop: 48, marginBottom: 48}}>
-      <h2 style={{marginBottom: 24, color: '#1a7f5a'}}>Contact</h2>
-      <div style={{fontSize: '1.1rem', marginBottom: 18}}>
-        <strong>Téléphone :</strong> <a href="tel:0248503175" style={{color:'#1a7f5a', textDecoration:'none'}}>02.48.50.31.75</a><br/>
-        <strong>Email :</strong> <a href="mailto:info@mille-univers.net" style={{color:'#1a7f5a', textDecoration:'none'}}>info@mille-univers.net</a>
+    <div className="container" style={{
+      maxWidth: isMobile ? '98vw' : 500,
+      marginTop: isMobile ? 18 : 48,
+      marginBottom: isMobile ? 18 : 48,
+      padding: isMobile ? '14px 2vw' : undefined,
+      borderRadius: isMobile ? 8 : 14,
+      fontSize: isMobile ? '1.01rem' : '1.1rem',
+      boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : undefined,
+      background: isMobile ? '#fff' : undefined,
+    }}>
+      <h2 style={{marginBottom: isMobile ? 14 : 24, color: '#1a7f5a', fontSize: isMobile ? '1.25rem' : undefined}}>Contact</h2>
+      <div style={{fontSize: isMobile ? '1rem' : '1.1rem', marginBottom: isMobile ? 12 : 18}}>
+        <strong>Téléphone :</strong> <a href="tel:0248503175" style={{color:'#1a7f5a', textDecoration:'none', fontSize: isMobile ? '1rem' : undefined}}>02.48.50.31.75</a><br/>
+        <strong>Email :</strong> <a href="mailto:info@mille-univers.net" style={{color:'#1a7f5a', textDecoration:'none', fontSize: isMobile ? '1rem' : undefined}}>info@mille-univers.net</a>
       </div>
-      <div style={{marginBottom: 18}}>
+      <div style={{marginBottom: isMobile ? 12 : 18, fontSize: isMobile ? '0.98rem' : undefined}}>
         <strong>Adresse :</strong><br/>
         32 B Route de la Chapelle,<br/>18000 Bourges
       </div>
-      <div>
+      <div style={{fontSize: isMobile ? '0.98rem' : undefined}}>
         <strong>Horaires :</strong><br/>
         Lundi – Mercredi : 8h30 à 12h30, de 13h30 à 18h30<br/>
         Jeudi : 8h30 à 12h30, de 13h30 à 17h30
@@ -546,9 +671,10 @@ function EcoleJardinPlanetaire() {
 
 function TiersPaysage() {
   useBodyClass('tiers-bg', true);
+  const isMobile = window.innerWidth <= 700;
   return (
     <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
-      <h2 style={{fontWeight:800, fontSize:'2.1rem', marginBottom:12, color:'#1a7f5a'}}>Le Tiers paysage</h2>
+      <h2 style={{fontWeight:800, fontSize: isMobile ? '2rem' : '2.1rem', marginBottom:12, color:'#1a7f5a'}}>Le Tiers paysage</h2>
       <div style={{fontSize:'1.15rem', lineHeight:1.7, textAlign:'justify', marginBottom:24}}>
         <p style={{background:'#eafaf2', borderRadius:10, padding:'14px 18px', marginBottom:24}}><b>Le Tiers paysage de Bourges</b> est un espace naturel d'environ un hectare, laissé en libre évolution&nbsp;: ici, la nature s'exprime sans intervention humaine, offrant un refuge à la biodiversité locale. Ce site, que l'on ne "touche pas", est le sujet de ce site web et une invitation à observer la richesse du vivant quand on laisse faire la nature.</p>
         <p><b>Le Tiers paysage</b> est un concept développé par Gilles Clément pour désigner l'ensemble des espaces délaissés, non exploités ou laissés à l'abandon par l'homme&nbsp;: friches, bords de route, talus, ruines, berges, interstices urbains…</p>
@@ -565,6 +691,49 @@ function TiersPaysage() {
         <div style={{fontStyle:'italic', color:'#1a7f5a', fontWeight:600, margin:'18px 0 0 0', fontSize:'1.08rem'}}>
           «&nbsp;Le Tiers paysage, c'est l'espace du possible, le territoire de l'inattendu, le réservoir de la diversité.&nbsp;»
         </div>
+      <div style={{display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 24, justifyContent: 'center', alignItems: 'center', margin: '32px 0'}}>
+        <img
+          src="/croquis2.png"
+          alt="Croquis Tiers paysage 2"
+          style={{
+            maxWidth: isMobile ? '99vw' : 340,
+            width: '100%',
+            borderRadius: 10,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+            marginBottom: isMobile ? 16 : 0,
+            cursor: 'zoom-in',
+            transition: 'transform 0.2s'
+          }}
+          onClick={e => {
+            const modal = document.createElement('div');
+            modal.style.position = 'fixed';
+            modal.style.top = 0;
+            modal.style.left = 0;
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.background = 'rgba(0,0,0,0.85)';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            modal.style.zIndex = 9999;
+            modal.style.cursor = 'zoom-out';
+            modal.onclick = () => document.body.removeChild(modal);
+
+            const img = document.createElement('img');
+            img.src = 'croquis2.png';
+            img.alt = "Croquis Tiers paysage 2";
+            img.style.maxWidth = '96vw';
+            img.style.maxHeight = '92vh';
+            img.style.borderRadius = '14px';
+            img.style.boxShadow = '0 4px 32px rgba(0,0,0,0.25)';
+            img.style.background = '#fff';
+            img.onclick = ev => ev.stopPropagation();
+
+            modal.appendChild(img);
+            document.body.appendChild(modal);
+          }}
+        />
+      </div>
       </div>
       <a className="btn" href="https://www.gillesclement.com/files/974_manifeste-du-tiers-paysage.pdf" target="_blank" rel="noopener noreferrer">En savoir plus</a>
     </div>

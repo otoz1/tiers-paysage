@@ -76,6 +76,23 @@ const Document = sequelize.define('Document', {
   }
 });
 
+// Notification unique
+const Notification = sequelize.define('Notification', {
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: Sequelize.NOW,
+  }
+});
+
 sequelize.sync();
 
 // API
@@ -88,6 +105,13 @@ app.get('/api/documents/:id', async (req, res) => {
   const doc = await Document.findByPk(req.params.id);
   if (doc) res.json(doc);
   else res.status(404).json({ error: 'Not found' });
+});
+
+// Notification publique
+app.get('/api/notification', async (req, res) => {
+  const notif = await Notification.findOne({ order: [['createdAt', 'DESC']] });
+  if (notif) res.json(notif);
+  else res.json(null);
 });
 
 // mot de passe admin ( à changer)
@@ -132,6 +156,25 @@ app.delete('/api/admin/documents/:id', async (req, res) => {
   const doc = await Document.findByPk(req.params.id);
   if (!doc) return res.status(404).json({ error: 'Not found' });
   await doc.destroy();
+  res.json({ success: true });
+});
+
+// Créer/éditer notification (remplace l'existante)
+app.post('/api/admin/notification', async (req, res) => {
+  const { title, description, password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  // Supprime l'ancienne notif
+  await Notification.destroy({ where: {} });
+  // Crée la nouvelle
+  const notif = await Notification.create({ title, description });
+  res.json(notif);
+});
+
+// Supprimer notification
+app.delete('/api/admin/notification', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  await Notification.destroy({ where: {} });
   res.json({ success: true });
 });
 
