@@ -13,23 +13,33 @@ const API_URL = 'http://localhost:4000';
 
 function useBodyClass(className, active, bgImage) {
   useEffect(() => {
-    if (active) {
-      document.body.classList.add(className);
-      if (bgImage) {
-        document.body.style.backgroundImage = `url(${bgImage})`;
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundRepeat = 'no-repeat';
+    if (className) {
+      if (active) {
+        document.body.classList.add(className);
+        if (bgImage) {
+          document.body.style.backgroundImage = `url(${bgImage})`;
+          document.body.style.backgroundSize = 'cover';
+          document.body.style.backgroundPosition = 'center';
+          document.body.style.backgroundRepeat = 'no-repeat';
+        }
+      } else {
+        document.body.classList.remove(className);
+        document.body.style.backgroundImage = '';
+        document.body.style.backgroundSize = '';
+        document.body.style.backgroundPosition = '';
+        document.body.style.backgroundRepeat = '';
       }
     } else {
-      document.body.classList.remove(className);
+      // Si pas de className, on ne touche pas aux classes
       document.body.style.backgroundImage = '';
       document.body.style.backgroundSize = '';
       document.body.style.backgroundPosition = '';
-      document.body.style.backgroundRepeat = '';  
+      document.body.style.backgroundRepeat = '';
     }
     return () => {
-      document.body.classList.remove(className);
+      if (className) {
+        document.body.classList.remove(className);
+      }
       document.body.style.backgroundImage = '';
       document.body.style.backgroundSize = '';
       document.body.style.backgroundPosition = '';
@@ -786,17 +796,18 @@ function Contact() {
 
   return (
     <div className="container" style={{
-      maxWidth: isMobile ? '98vw' : 1200,
-      marginTop: isMobile ? 18 : 48,
-      marginBottom: isMobile ? 18 : 48,
-      padding: isMobile ? '14px 2vw' : '32px',
+      paddingTop: isMobile ? 80 : 40, // Augmenté pour être sûr que le titre soit visible
+      marginTop: isMobile ? 0 : 40,
+      maxWidth: isMobile ? '95vw' : 1200,
       borderRadius: isMobile ? 8 : 14,
-      fontSize: isMobile ? '1.01rem' : '1.1rem',
+      fontSize: isMobile ? '0.95rem' : '1.1rem',
       boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.08)',
       background: '#fff',
       display: 'flex',
       flexDirection: isMobile ? 'column' : 'row',
       gap: isMobile ? 32 : 48,
+      padding: isMobile ? '12px 2vw 18px 2vw' : '32px',
+      minHeight: '100vh',
     }}>
       {/* Colonne de gauche - Mille Univers */}
       <div style={{
@@ -1044,7 +1055,7 @@ function EcoleJardinPlanetaire() {
     <div className="container" style={{maxWidth:900, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
       <img src={ecoleJardinImg} alt="École du Jardin Planétaire" style={{width:280, height:124, objectFit:'cover', borderRadius:16, marginBottom:24, boxShadow:'0 2px 12px rgba(0,0,0,0.10)'}} />
       <h2 style={{fontWeight:800, fontSize:'2.1rem', marginBottom:8}}>École du Jardin Planétaire</h2>
-      <div style={{fontWeight:600, color:'#1a7f5a', marginBottom:18, fontSize:'1.1rem'}}>Projet à Bourges – ouverture prévue 2028</div>
+      <div style={{fontWeight:600, color:'#1a7f5a', marginBottom:18, fontSize:'1.1rem'}}>Projet à Bourges</div>
       <div style={{fontSize:'1.13rem', lineHeight:1.7, textAlign:'justify', marginBottom:24, maxWidth:700}}>
         <p>L'école du jardin planétaire s'inspire du concept de <b>Jardin Planétaire</b> de Gilles Clément : la Terre est un jardin à l'échelle mondiale, dont nous sommes tous les jardiniers responsables. Créée en 2003 à La Réunion, l'école sensibilise à l'écologie, au paysage et à la biodiversité, à travers une pédagogie active et sensible, en plein air.</p>
         <p>Les cours se déroulent dans des forêts, jardins, friches, parcs naturels… L'apprentissage utilise botanique, jardinage, permaculture, écologie, mais aussi poésie, arts et lectures. L'école défend une pédagogie où l'on apprend en observant, en écoutant, en vivant des expériences concrètes dans le paysage.</p>
@@ -1188,6 +1199,8 @@ function Releve() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const isMobile = window.innerWidth <= 700;
+  useBodyClass('', false);
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -1248,27 +1261,85 @@ function Releve() {
   const totalNouveaux = sorted.filter(r => !prevSet.has(r.type+':'+r.nom)).length;
   const totalReapparus = reapparus.length;
   return (  
-    <div className="container">
-      <h2 style={{fontWeight:800, fontSize:'2rem', marginBottom:18, color:'#1a7f5a', display:'flex', alignItems:'center', gap:10}}><span role="img" aria-label="relevé">🌱</span> Relevé flore & faune 🦔</h2>
-      <div style={{display:'flex', alignItems:'center', gap:18, marginBottom:18}}>
-        <div>
-          <label>Année : </label>
-          <select value={annee} onChange={e=>setAnnee(Number(e.target.value))} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+    <div className="container" style={{
+      paddingTop: isMobile ? 80 : 40, // Augmenté pour être sûr que le titre soit visible
+      marginTop: isMobile ? 0 : 40,
+      maxWidth: isMobile ? '95vw' : 900,
+      borderRadius: isMobile ? 8 : 14,
+      boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.07)',
+      padding: isMobile ? '12px 2vw 18px 2vw' : '40px 32px',
+      minHeight: '100vh',
+    }}>
+      <h2 style={{
+        fontWeight: 800,
+        fontSize: isMobile ? '1.25rem' : '2rem',
+        marginBottom: isMobile ? 12 : 18,
+        color: '#1a7f5a',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginTop: isMobile ? 0 : undefined
+      }}><span role="img" aria-label="relevé">🌱</span> Relevé flore & faune 🦔</h2>
+
+      {/* Filtres */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center',
+        gap: isMobile ? 12 : 18,
+        marginBottom: isMobile ? 16 : 18,
+        flexWrap: 'wrap'
+      }}>
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
+          <label style={{ display: 'block', marginBottom: isMobile ? 4 : 8, fontSize: isMobile ? '0.9rem' : '1rem' }}>Année : </label>
+          <select 
+            value={annee} 
+            onChange={e=>setAnnee(Number(e.target.value))} 
+            style={{
+              fontSize: isMobile ? '0.9rem' : '1.1rem',
+              padding: isMobile ? '8px' : '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              width: isMobile ? '100%' : 'auto'
+            }}
+          >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        <div>
-          <label>Type : </label>
-          <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
+          <label style={{ display: 'block', marginBottom: isMobile ? 4 : 8, fontSize: isMobile ? '0.9rem' : '1rem' }}>Type : </label>
+          <select 
+            value={typeFilter} 
+            onChange={e=>setTypeFilter(e.target.value)} 
+            style={{
+              fontSize: isMobile ? '0.9rem' : '1.1rem',
+              padding: isMobile ? '8px' : '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              width: isMobile ? '100%' : 'auto'
+            }}
+          >
             <option value="all">Tous</option>
             <option value="faune">Faune</option>
             <option value="flore">Flore</option>
             <option value="autre">Autre</option>
           </select>
         </div>
-        <div>
-          <label>Statut : </label>
-          <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}}>
+
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
+          <label style={{ display: 'block', marginBottom: isMobile ? 4 : 8, fontSize: isMobile ? '0.9rem' : '1rem' }}>Statut : </label>
+          <select 
+            value={statusFilter} 
+            onChange={e=>setStatusFilter(e.target.value)} 
+            style={{
+              fontSize: isMobile ? '0.9rem' : '1.1rem',
+              padding: isMobile ? '8px' : '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              width: isMobile ? '100%' : 'auto'
+            }}
+          >
             <option value="all">Tous</option>
             <option value="nouveau">Nouveaux</option>
             <option value="reapparu">Réapparus</option>
@@ -1276,59 +1347,230 @@ function Releve() {
             <option value="normal">Déjà présents</option>
           </select>
         </div>
-        <div>
-          <input type="text" placeholder="Recherche par nom..." value={search} onChange={e=>setSearch(e.target.value)} style={{fontSize:'1.1rem', padding:'6px 12px', borderRadius:6, border:'1px solid #ccc'}} />
+
+        <div style={{ flex: isMobile ? '1 1 100%' : '0 1 auto' }}>
+          <label style={{ display: 'block', marginBottom: isMobile ? 4 : 8, fontSize: isMobile ? '0.9rem' : '1rem' }}>Recherche : </label>
+          <input 
+            type="text" 
+            placeholder="Recherche par nom..." 
+            value={search} 
+            onChange={e=>setSearch(e.target.value)} 
+            style={{
+              fontSize: isMobile ? '0.9rem' : '1.1rem',
+              padding: isMobile ? '8px' : '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #ccc',
+              width: isMobile ? '100%' : 'auto'
+            }}
+          />
         </div>
       </div>
-      <div style={{display:'flex', gap:18, marginBottom:18, flexWrap:'wrap'}}>
-        <span style={{background:'#eafaf2', color:'#1a7f5a', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Total : {total}</span>
-        <span style={{background:'#ffecb3', color:'#ff9800', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Nouveau{totalNouveaux > 1 ? 'x' : ''} : {totalNouveaux}</span>
-        <span style={{background:'#e3fcef', color:'#388e3c', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Réapparu{totalReapparus > 1 ? 's' : ''} : {totalReapparus}</span>
-        <span style={{background:'#ffcdd2', color:'#b71c1c', fontWeight:700, fontSize:'1.05rem', borderRadius:6, padding:'4px 12px'}}>Disparu{totalDisparus > 1 ? 's' : ''} : {totalDisparus}</span>
+
+      {/* Statistiques */}
+      <div style={{
+        display: 'flex',
+        gap: isMobile ? 8 : 18,
+        marginBottom: isMobile ? 16 : 18,
+        flexWrap: 'wrap',
+        justifyContent: isMobile ? 'space-between' : 'flex-start'
+      }}>
+        <span style={{
+          background: '#eafaf2',
+          color: '#1a7f5a',
+          fontWeight: 700,
+          fontSize: isMobile ? '0.9rem' : '1.05rem',
+          borderRadius: 6,
+          padding: isMobile ? '4px 8px' : '4px 12px'
+        }}>Total : {total}</span>
+        <span style={{
+          background: '#ffecb3',
+          color: '#ff9800',
+          fontWeight: 700,
+          fontSize: isMobile ? '0.9rem' : '1.05rem',
+          borderRadius: 6,
+          padding: isMobile ? '4px 8px' : '4px 12px'
+        }}>Nouveau{totalNouveaux > 1 ? 'x' : ''} : {totalNouveaux}</span>
+        <span style={{
+          background: '#e3fcef',
+          color: '#388e3c',
+          fontWeight: 700,
+          fontSize: isMobile ? '0.9rem' : '1.05rem',
+          borderRadius: 6,
+          padding: isMobile ? '4px 8px' : '4px 12px'
+        }}>Réapparu{totalReapparus > 1 ? 's' : ''} : {totalReapparus}</span>
+        <span style={{
+          background: '#ffcdd2',
+          color: '#b71c1c',
+          fontWeight: 700,
+          fontSize: isMobile ? '0.9rem' : '1.05rem',
+          borderRadius: 6,
+          padding: isMobile ? '4px 8px' : '4px 12px'
+        }}>Disparu{totalDisparus > 1 ? 's' : ''} : {totalDisparus}</span>
       </div>
+
       {loading ? <div style={{color:'#888'}}>Chargement...</div> : (
         <>
-        {filtered.length === 0 ? <div style={{color:'#888', fontSize:'1.1rem', margin:'32px 0'}}>Aucun relevé pour cette année.</div> :
-        <div style={{display:'flex', flexDirection:'column', gap:14}}>
+        {filtered.length === 0 ? <div style={{color:'#888', fontSize: isMobile ? '0.9rem' : '1.1rem', margin:'32px 0'}}>Aucun relevé pour cette année.</div> :
+        <div style={{display:'flex', flexDirection:'column', gap: isMobile ? 12 : 14}}>
           {filtered.map(r => {
             const isNouveau = !prevSet.has(r.type+':'+r.nom);
             const isReapparu = reapparus.some(x => x.type === r.type && x.nom === r.nom);
             let emoji = r.type === 'plante' ? '🌿' : r.type === 'faune' ? '🦋' : r.type === 'flore' ? '🌸' : '🍄';
             return (
-              <div key={r.id} style={{display:'flex', alignItems:'center', background:'#f8fafc', borderRadius:10, boxShadow:'0 2px 8px rgba(0,0,0,0.06)', padding:'14px 18px', gap:18, position:'relative'}}>
-                <span style={{fontSize:'2rem', marginRight:8}}>{emoji}</span>
-                <span style={{fontWeight:700, fontSize:'1.15rem', color:'#1a7f5a'}}>{r.nom}</span>
-                <span style={{color:'#888', fontSize:'1.05rem', marginLeft:8}}>{r.type}</span>
-                <span style={{marginLeft:18, color:'#444', fontSize:'1.05rem'}}>{r.description}</span>
-                {isNouveau && !isReapparu && (
-                  <span style={{background:'#ffb300', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>nouveau</span>
-                )}
-                {isReapparu && (
-                  <span style={{background:'#1a7f5a', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>réapparu en {annee}</span>
-                )}
-                {r.protege && (
-                  <span style={{background:'#2196f3', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>protégé</span>
-                )}
-                <span style={{marginLeft:18, color:'#888', fontSize:'0.98rem'}}>{r.annee}</span>
+              <div key={r.id} style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                background: '#f8fafc',
+                borderRadius: 10,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                padding: isMobile ? '12px' : '14px 18px',
+                gap: isMobile ? 8 : 18,
+                position: 'relative'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isMobile ? 8 : 18,
+                  width: isMobile ? '100%' : 'auto'
+                }}>
+                  <span style={{fontSize: isMobile ? '1.5rem' : '2rem'}}>{emoji}</span>
+                  <span style={{
+                    fontWeight: 700,
+                    fontSize: isMobile ? '1rem' : '1.15rem',
+                    color: '#1a7f5a'
+                  }}>{r.nom}</span>
+                  <span style={{
+                    color: '#888',
+                    fontSize: isMobile ? '0.9rem' : '1.05rem'
+                  }}>{r.type}</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'flex-start' : 'center',
+                  gap: isMobile ? 8 : 18,
+                  width: isMobile ? '100%' : 'auto'
+                }}>
+                  <span style={{
+                    color: '#444',
+                    fontSize: isMobile ? '0.9rem' : '1.05rem'
+                  }}>{r.description}</span>
+                  <div style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap'
+                  }}>
+                    {isNouveau && !isReapparu && (
+                      <span style={{
+                        background: '#ffb300',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: isMobile ? '0.8rem' : '0.93rem',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.10)'
+                      }}>nouveau</span>
+                    )}
+                    {isReapparu && (
+                      <span style={{
+                        background: '#1a7f5a',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: isMobile ? '0.8rem' : '0.93rem',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.10)'
+                      }}>réapparu en {annee}</span>
+                    )}
+                    {r.protege && (
+                      <span style={{
+                        background: '#2196f3',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: isMobile ? '0.8rem' : '0.93rem',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.10)'
+                      }}>protégé</span>
+                    )}
+                  </div>
+                  <span style={{
+                    color: '#888',
+                    fontSize: isMobile ? '0.85rem' : '0.98rem'
+                  }}>{r.annee}</span>
+                </div>
               </div>
             );
           })}
         </div>}
-        {/* Affichage des disparus quand les filtres sont sur "tout" ou quand le filtre est sur "disparu" */}
+
+        {/* Section des disparus */}
         {(statusFilter === 'all' || statusFilter === 'disparu') && filteredDisparus.length > 0 && (
-          <div style={{marginTop:32}}>
-            <h3 style={{color:'#b71c1c', fontWeight:700, fontSize:'1.15rem', marginBottom:12}}>Disparus en {annee}</h3>
-            <div style={{display:'flex', flexDirection:'column', gap:14}}>
+          <div style={{marginTop: isMobile ? 24 : 32}}>
+            <h3 style={{
+              color: '#b71c1c',
+              fontWeight: 700,
+              fontSize: isMobile ? '1rem' : '1.15rem',
+              marginBottom: isMobile ? 8 : 12
+            }}>Disparus en {annee}</h3>
+            <div style={{display:'flex', flexDirection:'column', gap: isMobile ? 12 : 14}}>
               {filteredDisparus.map(r => {
                 let emoji = r.type === 'plante' ? '🌿' : r.type === 'faune' ? '🦋' : r.type === 'flore' ? '🌸' : '🍄';
                 return (
-                  <div key={r.type+':'+r.nom} style={{display:'flex', alignItems:'center', background:'#fff3e0', borderRadius:10, boxShadow:'0 2px 8px rgba(0,0,0,0.06)', padding:'14px 18px', gap:18, position:'relative'}}>
-                    <span style={{fontSize:'2rem', marginRight:8}}>{emoji}</span>
-                    <span style={{fontWeight:700, fontSize:'1.15rem', color:'#b71c1c'}}>{r.nom}</span>
-                    <span style={{color:'#888', fontSize:'1.05rem', marginLeft:8}}>{r.type}</span>
-                    <span style={{background:'#b71c1c', color:'#fff', fontWeight:700, fontSize:'0.93rem', borderRadius:6, padding:'2px 8px', marginLeft:12, boxShadow:'0 1px 4px rgba(0,0,0,0.10)'}}>disparu en {annee}</span>
-                    <span style={{marginLeft:18, color:'#444', fontSize:'1.05rem'}}>{r.description}</span>
-                    <span style={{marginLeft:18, color:'#888', fontSize:'0.98rem'}}>{r.annee}</span>
+                  <div key={r.type+':'+r.nom} style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    background: '#fff3e0',
+                    borderRadius: 10,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    padding: isMobile ? '12px' : '14px 18px',
+                    gap: isMobile ? 8 : 18,
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? 8 : 18,
+                      width: isMobile ? '100%' : 'auto'
+                    }}>
+                      <span style={{fontSize: isMobile ? '1.5rem' : '2rem'}}>{emoji}</span>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: isMobile ? '1rem' : '1.15rem',
+                        color: '#b71c1c'
+                      }}>{r.nom}</span>
+                      <span style={{
+                        color: '#888',
+                        fontSize: isMobile ? '0.9rem' : '1.05rem'
+                      }}>{r.type}</span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      alignItems: isMobile ? 'flex-start' : 'center',
+                      gap: isMobile ? 8 : 18,
+                      width: isMobile ? '100%' : 'auto'
+                    }}>
+                      <span style={{
+                        background: '#b71c1c',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: isMobile ? '0.8rem' : '0.93rem',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.10)'
+                      }}>disparu en {annee}</span>
+                      <span style={{
+                        color: '#444',
+                        fontSize: isMobile ? '0.9rem' : '1.05rem'
+                      }}>{r.description}</span>
+                      <span style={{
+                        color: '#888',
+                        fontSize: isMobile ? '0.85rem' : '0.98rem'
+                      }}>{r.annee}</span>
+                    </div>
                   </div>
                 );
               })}
