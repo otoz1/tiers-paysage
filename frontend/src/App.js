@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import ReactQuill from 'react-quill';
@@ -7,9 +7,10 @@ import './App.css';
 import gillesClementImg from './gilles-clement.png';
 import ecoleJardinImg from './ecole-jardin.png';
 import ReactDOM from 'react-dom';
+import viewIcon from './view.png';
 
 
-const API_URL = 'http://localhost:4000';
+const API_URL = 'http://192.168.10.117:4000';
 
 function useBodyClass(className, active, bgImage) {
   useEffect(() => {
@@ -29,8 +30,7 @@ function useBodyClass(className, active, bgImage) {
         document.body.style.backgroundPosition = '';
         document.body.style.backgroundRepeat = '';
       }
-    } else {
-      // Si pas de className, on ne touche pas aux classes
+    } else {  
       document.body.style.backgroundImage = '';
       document.body.style.backgroundSize = '';
       document.body.style.backgroundPosition = '';
@@ -131,7 +131,7 @@ function Navbar() {
           <Link className={location.pathname==='/gilles-clement' ? 'active' : ''} to="/gilles-clement" onClick={handleNavClick}>Gilles Clément</Link>
           <Link className={location.pathname==='/ecole-jardin-planetaire' ? 'active' : ''} to="/ecole-jardin-planetaire" onClick={handleNavClick}>École du jardin planétaire</Link>
           <Link className={location.pathname==='/contact' ? 'active' : ''} to="/contact" onClick={handleNavClick}>À propos</Link>
-        </nav>
+        </nav> 
       </div>
       {burgerButton}
     </>
@@ -146,30 +146,26 @@ function Home() {
   const [bgImage, setBgImage] = useState('');
   const [progress, setProgress] = useState(0);
   const isMobile = window.innerWidth <= 700;
+  const startRef = useRef(Date.now());
   useBodyClass('home-bg', true);
   useEffect(() => {
     axios.get(`${API_URL}/api/documents`).then(res => setDocuments(res.data));
   }, []);
+  const filteredDocs = documents.filter(doc => doc.showOnHome !== false);
   useEffect(() => {
-    if (documents.length < 2) return;
-    let frame;
-    let start;
-    function animateBar(ts) {
-      if (!start) start = ts;
-      const elapsed = ts - start;
-      setProgress(Math.min(elapsed / 15000, 1));
-      if (elapsed < 15000) {
-        frame = requestAnimationFrame(animateBar);
-      }
-    }
+    if (filteredDocs.length < 2) return;
     setProgress(0);
-    frame = requestAnimationFrame(animateBar);
-    return () => cancelAnimationFrame(frame);
-  }, [documents, current]);
+    startRef.current = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startRef.current;
+      setProgress(Math.min(elapsed / 15000, 1));
+    }, 50);
+    return () => clearInterval(interval);
+  }, [filteredDocs, current]);
   useEffect(() => {
-    if (documents.length < 2) return;
+    if (filteredDocs.length < 2) return;
     const timer = setInterval(() => {
-      const nextIdx = (current + 1) % documents.length;
+      const nextIdx = (current + 1) % filteredDocs.length;
       setNext(nextIdx);
       setSliding(true);
       setTimeout(() => {
@@ -186,8 +182,8 @@ function Home() {
     const mainImgIndex = typeof doc.mainImage === 'number' ? doc.mainImage : 0;
     return doc.images && doc.images[mainImgIndex] ? `${API_URL}${doc.images[mainImgIndex]}` : '#f5f6fa';
   };
-  const currDoc = documents[current];
-  const nextDoc = next !== null ? documents[next] : null;
+  const currDoc = filteredDocs[current];
+  const nextDoc = next !== null ? filteredDocs[next] : null;
 
   const getBoldExcerpt = (html, boldLen = 80, totalLen = 200) => {
     const tmp = document.createElement('div');
@@ -329,7 +325,7 @@ function Home() {
         )}
       </div>
       {/* Barre de chargement discrète */}
-      <div style={{
+      <div className="barre-chargement" style={{
         position: 'fixed',
         left: 0,
         bottom: 0,
@@ -343,8 +339,9 @@ function Home() {
       }}>
         <div style={{
           height: '100%',
-          width: `${Math.round(progress * 100)}vw`,
+          width: `${Math.max(1, Math.round(progress * 100))}vw`,
           background: 'linear-gradient(90deg, #1a7f5a 60%, #e0e0e0 100%)',
+          backgroundColor: '#1a7f5a',
           transition: 'width 0.2s cubic-bezier(.4,0,.2,1)',
           opacity: 0.85,
         }} />
@@ -361,11 +358,13 @@ function Nouveautes() {
       setDocuments(sorted);
     });
   }, []);
+  // Filtrage effectif :
+  const filteredDocs = documents.filter(doc => doc.showOnNouveautes !== false);
   return (
     <div className="container">
       <h2 style={{marginBottom:24}}>Toutes les actualités</h2>
       <div className="card-list">
-        {documents.map(doc => {
+        {filteredDocs.map(doc => {
           const mainImgIndex = typeof doc.mainImage === 'number' ? doc.mainImage : 0;
           return (
             <div key={doc.id} className="card">
@@ -412,7 +411,7 @@ function DocumentDetail() {
 function Admin() {
   const [password, setPassword] = useState('');
   const [isAuth, setIsAuth] = useState(false);
-  const [adminTab, setAdminTab] = useState(''); // '' | 'actus' | 'releve'
+  const [adminTab, setAdminTab] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [images, setImages] = useState([]);
@@ -423,9 +422,6 @@ function Admin() {
   const [mainImage, setMainImage] = useState(0);
   const [imageResolutions, setImageResolutions] = useState([]);
   const [editId, setEditId] = useState(null);
-  const [notifTitle, setNotifTitle] = useState('');
-  const [notifDesc, setNotifDesc] = useState('');
-  const [notif, setNotif] = useState(null);
   const [releves, setReleves] = useState([]);
   const [annee, setAnnee] = useState(new Date().getFullYear());
   const [releveType, setReleveType] = useState('faune');
@@ -436,7 +432,29 @@ function Admin() {
   const [importYear, setImportYear] = useState(annee);
   const [importType, setImportType] = useState('faune');
   const [importMsg, setImportMsg] = useState('');
+  const [partenaires, setPartenaires] = useState([]);
+  const [editIdPartenaire, setEditIdPartenaire] = useState(null);
+  const [titlePartenaire, setTitlePartenaire] = useState('');
+  const [imagePartenaire, setImagePartenaire] = useState('');
+  const [linkPartenaire, setLinkPartenaire] = useState('');
+  const [errorPartenaire, setErrorPartenaire] = useState('');
+  const [uploadingPartenaireImg, setUploadingPartenaireImg] = useState(false);
+  const [showOnHome, setShowOnHome] = useState(true);
+  const [showOnNouveautes, setShowOnNouveautes] = useState(true);
 
+  useEffect(() => {
+    if (isAuth && adminTab === 'partenaires') {
+      axios.get(`${API_URL}/api/partenaires`).then(res => setPartenaires(res.data));
+    }
+  }, [isAuth, adminTab]);
+
+  useEffect(() => {
+    if (isAuth && adminTab === 'actus') {
+      axios.get(`${API_URL}/api/documents`).then(res => setDocuments(res.data));
+    }
+  }, [isAuth, adminTab]);
+
+  
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -447,22 +465,6 @@ function Admin() {
       setError('Mot de passe incorrect');
     }
   };
-
-  useEffect(() => {
-    if (isAuth && adminTab === 'actus') {
-      axios.get(`${API_URL}/api/documents`).then(res => setDocuments(res.data));
-      axios.get(`${API_URL}/api/notification`).then(res => {
-        setNotif(res.data);
-        if (res.data) {
-          setNotifTitle(res.data.title);
-          setNotifDesc(res.data.description);
-        } else {
-          setNotifTitle('');
-          setNotifDesc('');
-        }
-      });
-    }
-  }, [isAuth, adminTab]);
 
   useEffect(() => {
     if (isAuth && adminTab === 'releve') {
@@ -514,6 +516,8 @@ function Admin() {
     setContent(doc.content);
     setUploadedImages(doc.images || []);
     setMainImage(typeof doc.mainImage === 'number' ? doc.mainImage : 0);
+    setShowOnHome(doc.showOnHome !== false); // true si undefined
+    setShowOnNouveautes(doc.showOnNouveautes !== false);
   };
 
   const handleAdd = async (e) => {
@@ -521,9 +525,9 @@ function Admin() {
     if (!title || !content) return setError('Titre et contenu requis');
     try {
       if (editId) {
-        await axios.put(`${API_URL}/api/admin/documents/${editId}`, { title, content, password, images: uploadedImages, mainImage });
+        await axios.put(`${API_URL}/api/admin/documents/${editId}`, { title, content, password, images: uploadedImages, mainImage, showOnHome: !!showOnHome, showOnNouveautes: !!showOnNouveautes });
       } else {
-        await axios.post(`${API_URL}/api/admin/documents`, { title, content, password, images: uploadedImages, mainImage });
+        await axios.post(`${API_URL}/api/admin/documents`, { title, content, password, images: uploadedImages, mainImage, showOnHome: !!showOnHome, showOnNouveautes: !!showOnNouveautes });
       }
       setTitle('');
       setContent('');
@@ -531,6 +535,8 @@ function Admin() {
       setUploadedImages([]);
       setMainImage(0);
       setEditId(null);
+      setShowOnHome(true);
+      setShowOnNouveautes(true);
       setError('');
       const res = await axios.get(`${API_URL}/api/documents`);
       setDocuments(res.data);
@@ -639,6 +645,7 @@ function Admin() {
         <div style={{display:'flex', gap:24, margin:'32px 0'}}>
           <button className="btn" style={{fontSize:'1.2rem', padding:'18px 32px'}} onClick={()=>setAdminTab('actus')}>Gestion des actualités</button>
           <button className="btn" style={{fontSize:'1.2rem', padding:'18px 32px', background:'#1a7f5a'}} onClick={()=>setAdminTab('releve')}>Gestion des relevés</button>
+          <button className="btn" style={{fontSize:'1.2rem', padding:'18px 32px', background:'#1a7f5a'}} onClick={()=>setAdminTab('partenaires')}>Gestion des partenaires</button>
         </div>
         <Link className="btn" to="/">Retour à l'accueil</Link>
       </div>
@@ -714,6 +721,84 @@ function Admin() {
     );
   }
 
+  if (adminTab === 'partenaires') {
+    const handleSave = async (e) => {
+      e.preventDefault();
+      try {
+        if (editIdPartenaire) {
+          await axios.put(`${API_URL}/api/admin/partenaires/${editIdPartenaire}`, { password, title: titlePartenaire, image: imagePartenaire, link: linkPartenaire });
+        } else {
+          await axios.post(`${API_URL}/api/admin/partenaires`, { password, title: titlePartenaire, image: imagePartenaire, link: linkPartenaire });
+        }
+        setTitlePartenaire(''); setImagePartenaire(''); setLinkPartenaire(''); setEditIdPartenaire(null);
+        const res = await axios.get(`${API_URL}/api/partenaires`);
+        setPartenaires(res.data);
+        setErrorPartenaire('');
+      } catch {
+        setErrorPartenaire('Erreur lors de la sauvegarde');
+      }
+    };
+    const handleDelete = async (id) => {
+      if (!window.confirm('Supprimer ce partenaire ?')) return;
+      try {
+        await axios.delete(`${API_URL}/api/admin/partenaires/${id}`, { data: { password } });
+        setPartenaires(partenaires => partenaires.filter(p => p.id !== id));
+      } catch {
+        setErrorPartenaire('Erreur lors de la suppression');
+      }
+    };
+    const handleEdit = (p) => {
+      setEditIdPartenaire(p.id); setTitlePartenaire(p.title); setImagePartenaire(p.image); setLinkPartenaire(p.link);
+    };
+    const handleImagePartenaireChange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      setUploadingPartenaireImg(true);
+      const formData = new FormData();
+      formData.append('image', file);
+      try {
+        const res = await axios.post(`${API_URL}/api/admin/upload-partenaire`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res.data.file) {
+          setImagePartenaire(res.data.file);
+        }
+      } catch {
+        setErrorPartenaire("Erreur upload image");
+      }
+      setUploadingPartenaireImg(false);
+    };
+    return (
+      <div className="container">
+        <h2>Gestion des partenaires</h2>
+        <form onSubmit={handleSave} style={{marginBottom:18, background:'#eafaf2', borderRadius:8, padding:16, display:'flex', flexDirection:'column', gap:10, maxWidth:400}}>
+          <input type="text" placeholder="Nom" value={titlePartenaire} onChange={e=>setTitlePartenaire(e.target.value)} required />
+          <input type="file" accept="image/*" onChange={handleImagePartenaireChange} />
+          {uploadingPartenaireImg && <div style={{color:'#888'}}>Upload en cours...</div>}
+          {imagePartenaire && (
+            <img src={`${API_URL}${imagePartenaire}`} alt="aperçu" style={{maxWidth:80, maxHeight:80, borderRadius:8, marginTop:4, marginBottom:4, border:'1px solid #eafaf2'}} />
+          )}
+          <input type="text" placeholder="Lien du site" value={linkPartenaire} onChange={e=>setLinkPartenaire(e.target.value)} required />
+          <button className="btn" type="submit">{editIdPartenaire ? 'Enregistrer' : 'Ajouter'}</button>
+          {editIdPartenaire && <button className="btn" type="button" style={{background:'#888'}} onClick={()=>{setEditIdPartenaire(null); setTitlePartenaire(''); setImagePartenaire(''); setLinkPartenaire('');}}>Annuler</button>}
+          {errorPartenaire && <div style={{color:'red'}}>{errorPartenaire}</div>}
+        </form>
+        <ul style={{listStyle:'none', padding:0}}>
+          {partenaires.map(p => (
+            <li key={p.id} style={{marginBottom:8, display:'flex', alignItems:'center', gap:12}}>
+              <img src={`${API_URL}${p.image}`} alt={p.title} style={{width:40, height:40, borderRadius:8, objectFit:'cover', border:'1px solid #eafaf2'}} />
+              <span style={{fontWeight:600}}>{p.title}</span>
+              <a href={p.link} target="_blank" rel="noopener noreferrer" style={{color:'#1a7f5a', fontSize:'0.98rem'}}>{p.link}</a>
+              <button className="btn" style={{marginLeft:8}} onClick={()=>handleEdit(p)}>Modifier</button>
+              <button className="btn" style={{background:'#e57373'}} onClick={()=>handleDelete(p.id)}>Supprimer</button>
+            </li>
+          ))}
+        </ul>
+        <button className="btn" style={{marginTop:18}} onClick={()=>setAdminTab('')}>Retour</button>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <h2>Administration</h2>
@@ -744,8 +829,18 @@ function Admin() {
             </div>
           ))}
         </div>
+        <div style={{display:'flex', gap:18, margin:'10px 0'}}>
+          <label style={{display:'flex', alignItems:'center', gap:6}}>
+            <input type="checkbox" checked={showOnHome} onChange={e => setShowOnHome(e.target.checked)} />
+            Afficher sur la page d'accueil
+          </label>
+          <label style={{display:'flex', alignItems:'center', gap:6}}>
+            <input type="checkbox" checked={showOnNouveautes} onChange={e => setShowOnNouveautes(e.target.checked)} />
+            Afficher dans les actualités
+          </label>
+        </div>
         <button className="btn" type="submit">{editId ? 'Enregistrer les modifications' : 'Ajouter'}</button>
-        {editId && <button className="btn" type="button" style={{marginLeft:8, background:'#888'}} onClick={() => { setEditId(null); setTitle(''); setContent(''); setUploadedImages([]); setMainImage(0); }}>Annuler</button>}
+        {editId && <button className="btn" type="button" style={{marginLeft:8, background:'#888'}} onClick={() => { setEditId(null); setTitle(''); setContent(''); setUploadedImages([]); setMainImage(0); setShowOnHome(true); setShowOnNouveautes(true); }}>Annuler</button>}
       </form>
       {error && <div style={{color:'red'}}>{error}</div>}
       <h3>Documents existants</h3>
@@ -753,6 +848,7 @@ function Admin() {
         {documents.map(doc => (
           <li key={doc.id} style={{marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between'}}>
             <span className="doc-title">{doc.title}</span>
+            <a href={`/document/${doc.id}`} target="_blank" rel="noopener noreferrer" style={{marginLeft:12, color:'#1a7f5a', fontSize:'0.98rem'}}>Lien</a>
             <div>
               <button className="btn" style={{marginRight:8}} onClick={() => handleEdit(doc)}>Modifier</button>
               <button className="btn" onClick={() => handleDelete(doc.id)}>Supprimer</button>
@@ -767,204 +863,206 @@ function Admin() {
 
 function Contact() {
   const isMobile = window.innerWidth <= 700;
-  const partenaires = [
-    {
-      title: 'Partenaire 1',
-      description: 'Lorem Ipsum...',
-      image: '/partenaires/1.jpg',
-      link: 'https://example.com/'
-    },
-    {
-      title: 'Partenaire 2',
-      description: 'Lorem Ipsum...',
-      image: '/partenaires/2.jpg',
-      link: 'https://example.com/'
-    },
-    {
-      title: 'Partenaire 3',
-      description: 'Lorem Ipsum...',
-      image: '/partenaires/3.jpg',
-      link: 'https://example.com/'
-    },
-    {
-      title: 'Partenaire 4',
-      description: 'Lorem Ipsum...',
-      image: '/partenaires/4.jpg',
-      link: 'https://example.com/'
-    }
-  ];
+  const [partenaires, setPartenaires] = useState([]);
+  useEffect(() => {
+    axios.get(`${API_URL}/api/partenaires`).then(res => setPartenaires(res.data));
+  }, []);
 
   return (
-    <div className="container" style={{
-      paddingTop: isMobile ? 80 : 40, // Augmenté pour être sûr que le titre soit visible
-      marginTop: isMobile ? 0 : 40,
-      maxWidth: isMobile ? '95vw' : 1200,
-      borderRadius: isMobile ? 8 : 14,
-      fontSize: isMobile ? '0.95rem' : '1.1rem',
-      boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.08)',
-      background: '#fff',
-      display: 'flex',
-      flexDirection: isMobile ? 'column' : 'row',
-      gap: isMobile ? 32 : 48,
-      padding: isMobile ? '12px 2vw 18px 2vw' : '32px',
-      minHeight: '100vh',
-    }}>
-      {/* Colonne de gauche - Mille Univers */}
-      <div style={{
-        flex: 1,
-        background: '#f8fafc',
-        borderRadius: 12,
-        padding: isMobile ? 20 : 32,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    <>
+      <div className="container" style={{
+        paddingTop: isMobile ? 80 : 40,
+        marginTop: isMobile ? 80 : 80,
+        maxWidth: isMobile ? '95vw' : 1200,
+        borderRadius: isMobile ? 8 : 14,
+        fontSize: isMobile ? '0.95rem' : '1.1rem',
+        boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.08)',
+        background: '#fff',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 32 : 48,
+        padding: isMobile ? '12px 2vw 18px 2vw' : '32px',
+        minHeight: '0vh',
       }}>
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: isMobile ? 20 : 28,
-          paddingBottom: 16,
-          borderBottom: '2px solid #eafaf2',
+          flex: 1,
+          background: '#f8fafc',
+          borderRadius: 12,
+          padding: isMobile ? 20 : 32,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         }}>
-          <a 
-            href="https://mille-univers.net/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: isMobile ? 20 : 28,
+            paddingBottom: 16,
+            borderBottom: '2px solid #eafaf2',
+          }}>
+            <a 
+              href="https://mille-univers.net/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#1a7f5a',
+                fontWeight: 800,
+                fontSize: isMobile ? '1.4rem' : '1.6rem',
+                textDecoration: 'none',
+                transition: 'color 0.2s',
+              }}
+              onMouseOver={e => e.target.style.color = '#2ecc71'}
+              onMouseOut={e => e.target.style.color = '#1a7f5a'}
+            >Les mille univers</a>
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: isMobile ? 16 : 24,
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: '#fff',
+              padding: '12px 16px',
+              borderRadius: 8,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{fontSize: '1.4rem'}}>📞</span>
+              <div>
+                <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Téléphone</div>
+                <a href="tel:0248503175" style={{
+                  color: '#444',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  fontSize: isMobile ? '1rem' : '1.1rem',
+                  transition: 'color 0.2s',
+                }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
+                  02.48.50.31.75
+                </a>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: '#fff',
+              padding: '12px 16px',
+              borderRadius: 8,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{fontSize: '1.4rem'}}>✉️</span>
+              <div>
+                <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Email</div>
+                <a href="mailto:info@mille-univers.net" style={{
+                  color: '#444',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                  fontSize: isMobile ? '1rem' : '1.1rem',
+                  transition: 'color 0.2s',
+                }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
+                  info@mille-univers.net
+                </a>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              background: '#fff',
+              padding: '12px 16px',
+              borderRadius: 8,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{fontSize: '1.4rem'}}>📍</span>
+              <div>
+                <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Adresse</div>
+                <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
+                  32 bis, route de la Chapelle<br/>
+                  18000 Bourges
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              background: '#fff',
+              padding: '12px 16px',
+              borderRadius: 8,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{fontSize: '1.4rem'}}>🕒</span>
+              <div>
+                <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Horaires</div>
+                <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
+                  lundi – mercredi : 8h30 à 12h30, de 13h30 à 18h30<br/>
+                  jeudi : 8h30 à 12h30, de 13h30 à 17h30
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              background: '#fff',
+              padding: '12px 16px',
+              borderRadius: 8,
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+            }}>
+              <span style={{fontSize: '1.4rem'}}>🌐</span>
+              <div>
+                <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Site web</div>
+                <a
+                  href="https://mille-univers.net"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#444',
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                    fontSize: isMobile ? '1rem' : '1.1rem',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseOver={e => e.target.style.color = '#1a7f5a'}
+                  onMouseOut={e => e.target.style.color = '#444'}
+                >
+                  https://mille-univers.net/
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          flex: 1,
+          background: '#f8fafc',
+          borderRadius: 12,
+          padding: isMobile ? 20 : 32,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: isMobile ? 20 : 28,
+            paddingBottom: 16,
+            borderBottom: '2px solid #eafaf2',
+          }}>
+            <span style={{
               color: '#1a7f5a',
               fontWeight: 800,
               fontSize: isMobile ? '1.4rem' : '1.6rem',
-              textDecoration: 'none',
-              transition: 'color 0.2s',
-            }}
-            onMouseOver={e => e.target.style.color = '#2ecc71'}
-            onMouseOut={e => e.target.style.color = '#1a7f5a'}
-          >Les mille univers</a>
-        </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isMobile ? 16 : 24,
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: '#fff',
-            padding: '12px 16px',
-            borderRadius: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}>
-            <span style={{fontSize: '1.4rem'}}>📞</span>
-            <div>
-              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Téléphone</div>
-              <a href="tel:0248503175" style={{
-                color: '#444',
-                textDecoration: 'none',
-                fontWeight: 500,
-                fontSize: isMobile ? '1rem' : '1.1rem',
-                transition: 'color 0.2s',
-              }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
-                02.48.50.31.75
-              </a>
-            </div>
+            }}>Partenaires</span>
           </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: '#fff',
-            padding: '12px 16px',
-            borderRadius: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}>
-            <span style={{fontSize: '1.4rem'}}>✉️</span>
-            <div>
-              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Email</div>
-              <a href="mailto:info@mille-univers.net" style={{
-                color: '#444',
-                textDecoration: 'none',
-                fontWeight: 500,
-                fontSize: isMobile ? '1rem' : '1.1rem',
-                transition: 'color 0.2s',
-              }} onMouseOver={e => e.target.style.color = '#1a7f5a'} onMouseOut={e => e.target.style.color = '#444'}>
-                info@mille-univers.net
-              </a>
-            </div>
-          </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
-            background: '#fff',
-            padding: '12px 16px',
-            borderRadius: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}>
-            <span style={{fontSize: '1.4rem'}}>📍</span>
-            <div>
-              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Adresse</div>
-              <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
-                32 bis, route de la Chapelle<br/>
-                18000 Bourges
-              </div>
-            </div>
-          </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
-            background: '#fff',
-            padding: '12px 16px',
-            borderRadius: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-          }}>
-            <span style={{fontSize: '1.4rem'}}>🕒</span>
-            <div>
-              <div style={{fontWeight: 600, color: '#1a7f5a', marginBottom: 4}}>Horaires</div>
-              <div style={{color: '#444', fontSize: isMobile ? '1rem' : '1.1rem'}}>
-                Lundi – Mercredi : 8h30 à 12h30, de 13h30 à 18h30<br/>
-                Jeudi : 8h30 à 12h30, de 13h30 à 17h30
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Colonne de droite - Partenaires */}
-      <div style={{
-        flex: 1,
-        background: '#f8fafc',
-        borderRadius: 12,
-        padding: isMobile ? 20 : 32,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: isMobile ? 20 : 28,
-          paddingBottom: 16,
-          borderBottom: '2px solid #eafaf2',
-        }}>
-          <span style={{
-            color: '#1a7f5a',
-            fontWeight: 800,
-            fontSize: isMobile ? '1.4rem' : '1.6rem',
-          }}>Partenaires</span>
-        </div>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isMobile ? 16 : 24,
-        }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+            gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
             gap: 16,
           }}>
             {partenaires.map((partner, i) => (
               <a
-                key={i}
+                key={partner.id || i}
                 href={partner.link}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -984,12 +1082,12 @@ function Contact() {
                   gap: 12,
                 }}
                 onMouseOver={e => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
                 }}
                 onMouseOut={e => {
-                  e.target.style.transform = 'none';
-                  e.target.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
                 }}
               >
                 <div style={{
@@ -1004,7 +1102,7 @@ function Contact() {
                   border: '2px solid #eafaf2',
                 }}>
                   <img 
-                    src={partner.image} 
+                    src={`${API_URL}${partner.image}`} 
                     alt={partner.title}
                     style={{
                       width: '100%',
@@ -1018,27 +1116,27 @@ function Contact() {
                   fontSize: '1.1rem',
                   fontWeight: 600,
                 }}>{partner.title}</div>
-                <div style={{
-                  color: '#666',
-                  fontSize: '0.9rem',
-                }}>{partner.description}</div>
               </a>
             ))}
           </div>
         </div>
       </div>
-    </div>
+      {/* Footer personnalisé, tout en bas */}
+      <footer style={{width:'100%', marginTop:32, textAlign:'center', color:'#888', fontSize:'0.98rem', fontStyle:'italic', position:'relative'}}>
+        Site web réalisé par Otohiko Fujara
+      </footer>
+    </>
   );
 }
 
 function GillesClement() {
   useBodyClass('gilles-bg', true);
   return (
-    <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
+    <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#ffffff', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
       <img src={gillesClementImg} alt="Gilles Clément" style={{width:160, height:160, objectFit:'cover', borderRadius:'50%', marginBottom:24, boxShadow:'0 2px 12px rgba(0,0,0,0.10)'}} />
       <h2 style={{fontWeight:800, fontSize:'2.1rem', marginBottom:12}}>Gilles Clément</h2>
       <div style={{fontSize:'1.15rem', lineHeight:1.7, textAlign:'justify', marginBottom:24}}>
-        Paysagiste, jardinier, botaniste, écrivain et enseignant français né en 1943, Gilles Clément est l'une des figures majeures de l'écologie et du paysage contemporain. Il est l'auteur des concepts de <b>Jardin en Mouvement</b>, <b>Jardin Planétaire</b> et <b>Tiers Paysage</b>, qui invitent à repenser notre rapport au vivant, à la biodiversité et à l'espace.<br/><br/>
+        Paysagiste, jardinier, botaniste, écrivain et enseignant français né en 1943, Gilles Clément est l'une des figures majeures de l'écologie et du paysage contemporain. Il est l'auteur des concepts de <b>Jardin en mouvement</b>, <b>Jardin planétaire</b> et <b>Tiers paysage</b>, qui invitent à repenser notre rapport au vivant, à la biodiversité et à l'espace.<br/><br/>
         Professeur au Collège de France, il a conçu de nombreux jardins publics et privés, et publié de nombreux ouvrages influents. Son approche poétique et engagée du paysage met en avant l'observation, la spontanéité, la diversité et la résistance face à la standardisation.<br/><br/>
         <span style={{fontStyle:'italic', color:'#1a7f5a', fontWeight:600}}>
           « Le jardinier est celui qui accompagne, qui observe, qui favorise la vie, sans jamais la dominer. »
@@ -1052,19 +1150,19 @@ function GillesClement() {
 function EcoleJardinPlanetaire() {
   useBodyClass('ecole-bg', true);
   return (
-    <div className="container" style={{maxWidth:900, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
-      <img src={ecoleJardinImg} alt="École du Jardin Planétaire" style={{width:280, height:124, objectFit:'cover', borderRadius:16, marginBottom:24, boxShadow:'0 2px 12px rgba(0,0,0,0.10)'}} />
-      <h2 style={{fontWeight:800, fontSize:'2.1rem', marginBottom:8}}>École du Jardin Planétaire</h2>
+    <div className="container" style={{maxWidth:900, margin:'40px auto', background:'#fff', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
+      <img src={ecoleJardinImg} alt="École du Jardin planétaire" style={{width:280, height:124, objectFit:'cover', borderRadius:16, marginBottom:24, boxShadow:'0 2px 12px rgba(0,0,0,0.10)'}} />
+      <h2 style={{fontWeight:800, fontSize:'2.1rem', marginBottom:8}}>École du Jardin planétaire</h2>
       <div style={{fontWeight:600, color:'#1a7f5a', marginBottom:18, fontSize:'1.1rem'}}>Projet à Bourges</div>
       <div style={{fontSize:'1.13rem', lineHeight:1.7, textAlign:'justify', marginBottom:24, maxWidth:700}}>
-        <p>L'école du jardin planétaire s'inspire du concept de <b>Jardin Planétaire</b> de Gilles Clément : la Terre est un jardin à l'échelle mondiale, dont nous sommes tous les jardiniers responsables. Créée en 2003 à La Réunion, l'école sensibilise à l'écologie, au paysage et à la biodiversité, à travers une pédagogie active et sensible, en plein air.</p>
+        <p>L'école du jardin planétaire s'inspire du concept de <b>Jardin planétaire</b> de Gilles Clément : la Terre est un jardin à l'échelle mondiale, dont nous sommes tous les jardiniers responsables. Créée en 2003 à La Réunion, l'école sensibilise à l'écologie, au paysage et à la biodiversité, à travers une pédagogie active et sensible, en plein air.</p>
         <p>Les cours se déroulent dans des forêts, jardins, friches, parcs naturels… L'apprentissage utilise botanique, jardinage, permaculture, écologie, mais aussi poésie, arts et lectures. L'école défend une pédagogie où l'on apprend en observant, en écoutant, en vivant des expériences concrètes dans le paysage.</p>
         <div style={{margin:'18px 0', background:'#eafaf2', borderRadius:10, padding:'16px 18px', fontSize:'1.08rem'}}>
           <b>Trois principes fondamentaux :</b>
           <ul style={{margin:'10px 0 0 18px'}}>
-            <li><b>Le Jardin Planétaire</b> – la Terre est un jardin dont nous sommes les jardiniers.</li>
-            <li><b>Le Tiers Paysage</b> – les espaces délaissés sont des réservoirs de vie à protéger.</li>
-            <li><b>Le Jardin en Mouvement</b> – il faut accompagner la nature plutôt que la contraindre.</li>
+            <li><b>Le Jardin planétaire</b> – la Terre est un jardin dont nous sommes les jardiniers.</li>
+            <li><b>Le Tiers paysage</b> – les espaces délaissés sont des réservoirs de vie à protéger.</li>
+            <li><b>Le Jardin en mouvement</b> – il faut accompagner la nature plutôt que la contraindre.</li>
           </ul>
         </div>
         <b>Exemples d'activités :</b>
@@ -1085,7 +1183,7 @@ function EcoleJardinPlanetaire() {
           </ul>
         </div>
         <div style={{fontStyle:'italic', color:'#1a7f5a', fontWeight:600, margin:'18px 0 0 0', fontSize:'1.08rem'}}>
-          « Le Jardin Planétaire est une invitation à prendre soin de la Terre comme d'un jardin commun, à cultiver la diversité et à inventer de nouveaux modes de cohabitation avec le vivant. »
+          « Le Jardin planétaire est une invitation à prendre soin de la Terre comme d'un jardin commun, à cultiver la diversité et à inventer de nouveaux modes de cohabitation avec le vivant. »
         </div>
       </div>
       <div style={{display:'flex', gap:16, flexWrap:'wrap', justifyContent:'center', marginBottom:12}}>
@@ -1099,7 +1197,7 @@ function TiersPaysage() {
   useBodyClass('tiers-bg', true);
   const isMobile = window.innerWidth <= 700;
   return (
-    <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#f7f7f7cc', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
+    <div className="container" style={{maxWidth:800, margin:'40px auto', background:'#fff', borderRadius:18, boxShadow:'0 4px 24px rgba(0,0,0,0.08)', padding:'40px 32px', display:'flex', flexDirection:'column', alignItems:'center'}}>
       <div style={{
         width: '100%',
         height: isMobile ? 300 : 400,
@@ -1109,7 +1207,7 @@ function TiersPaysage() {
         boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
       }}>
         <iframe
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2689.1234567890123!2d2.3968!3d47.0847!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47fa967e5f0e0f0f%3A0x0!2s32%20Bis%20Route%20de%20la%20Chapelle%2C%2018000%20Bourges!5e0!3m2!1sfr!2sfr!4v1234567890"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2689.1234567890123!2d2.4143868!3d47.1053548!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47fa969e2e2e2e2e%3A0x0!2sRue%20Th%C3%A9ophile%20Gautier%2C%2018000%20Bourges%2C%20France!5e0!3m2!1sfr!2sfr!4v1710000000000!5m2!1sfr!2sfr"
           width="100%"
           height="100%"
           style={{ border: 0 }}
@@ -1121,11 +1219,19 @@ function TiersPaysage() {
 
       <h2 style={{fontWeight:800, fontSize: isMobile ? '2rem' : '2.1rem', marginBottom:12, color:'#1a7f5a'}}>Le Tiers paysage</h2>
 
+      <div style={{marginBottom: 18, fontSize: isMobile ? '1rem' : '1.13rem', color: '#1a7f5a', fontWeight: 500, textAlign: 'center'}}>
+        Ce Tiers paysage est situé à <b>Bourges</b> et est géré par <a href="https://mille-univers.net/" target="_blank" rel="noopener noreferrer" style={{color:'#1a7f5a', textDecoration:'underline', fontWeight:700}}>les mille univers</a>.
+      </div>
 
       <div style={{fontSize:'1.15rem', lineHeight:1.7, textAlign:'justify', marginBottom:24}}>
-        <p style={{background:'#eafaf2', borderRadius:10, padding:'14px 18px', marginBottom:24}}><b>Le Tiers paysage de Bourges</b> est un espace naturel d'environ un hectare, laissé en libre évolution&nbsp;: ici, la nature s'exprime sans intervention humaine, offrant un refuge à la biodiversité locale. Ce site, que l'on ne "touche pas", est le sujet de ce site web et une invitation à observer la richesse du vivant quand on laisse faire la nature.</p>
+        <p><b>Le Tiers paysage de Bourges</b> est un espace naturel d'environ un hectare, laissé en libre évolution&nbsp;: ici, la nature s'exprime sans intervention humaine, offrant un refuge à la biodiversité locale. Ce site, que l'on ne "touche pas", est le sujet de ce site web et une invitation à observer la richesse du vivant quand on laisse faire la nature.</p>
         <p><b>Le Tiers paysage</b> est un concept développé par Gilles Clément pour désigner l'ensemble des espaces délaissés, non exploités ou laissés à l'abandon par l'homme&nbsp;: friches, bords de route, talus, ruines, berges, interstices urbains…</p>
         <p>Ces lieux, souvent considérés comme sans valeur, sont en réalité de véritables refuges pour la biodiversité. Ils accueillent une grande variété d'espèces végétales et animales, parfois rares ou menacées, qui trouvent là un espace de liberté, loin des contraintes de l'agriculture intensive ou de l'urbanisation.</p>
+
+        <div style={{fontStyle:'italic', color:'#1a7f5a', fontWeight:600, margin:'18px 0 0 0', fontSize:'1.08rem'}}>
+          «&nbsp;Tout change tout le temps. Tout évolue. Tout se transforme. Rien n'est figé. La stabilité est une illusion&nbsp;» Gilles Clément
+          <br/>
+        </div>
         <div style={{margin:'18px 0', background:'#eafaf2', borderRadius:10, padding:'16px 18px', fontSize:'1.08rem'}}>
           <b>Le Tiers paysage, c'est&nbsp;:</b>
           <ul style={{margin:'10px 0 0 18px'}}>
@@ -1221,7 +1327,9 @@ function Releve() {
   const currSet = new Set(releves.map(r => r.type+':'+r.nom));
   const beforePrevSet = new Set(relevesBeforePrev.map(r => r.type+':'+r.nom));
   const typeOrder = { plante: 1, faune: 2, flore: 3, autre: 4 };
-  const sorted = [...releves].sort((a, b) => typeOrder[a.type]-typeOrder[b.type] || a.nom.localeCompare(b.nom));
+  const sorted = useMemo(() => {
+    return [...releves].sort((a, b) => typeOrder[a.type]-typeOrder[b.type] || a.nom.localeCompare(b.nom));
+  }, [releves]);
   const disparus = relevesPrev.filter(r => !currSet.has(r.type+':'+r.nom));
   const reapparus = releves.filter(r => !prevSet.has(r.type+':'+r.nom) && beforePrevSet.has(r.type+':'+r.nom));
   const getStatus = r => {
@@ -1231,8 +1339,7 @@ function Releve() {
     if (isReapparu) return 'reapparu';
     return 'normal';
   };
-  let filtered = sorted.filter(r => {
-    // Convertir les anciens types "plante" en "flore"
+  let filtered = sorted.filter(r => {; 
     const effectiveType = r.type === 'plante' ? 'flore' : r.type;
     if (typeFilter !== 'all' && effectiveType !== typeFilter) return false;
     if (statusFilter !== 'all') {
@@ -1250,7 +1357,6 @@ function Releve() {
     return true;
   });
 
-  // Filtrer les disparus en fonction du type
   const filteredDisparus = disparus.filter(r => {
     const effectiveType = r.type === 'plante' ? 'flore' : r.type;
     return typeFilter === 'all' || effectiveType === typeFilter;
@@ -1260,10 +1366,38 @@ function Releve() {
   const totalDisparus = filteredDisparus.length;
   const totalNouveaux = sorted.filter(r => !prevSet.has(r.type+':'+r.nom)).length;
   const totalReapparus = reapparus.length;
-  return (  
+  const [popupNom, setPopupNom] = useState(null);
+  const [hasImage, setHasImage] = useState({});
+  const getImageKey = r => {
+    if (r.type === 'faune') {
+      const desc = (r.description || '').trim();
+      return desc ? desc : r.nom;
+    }
+    return r.description || r.nom;
+  };
+
+  useEffect(() => {
+    const checkImages = async () => {
+      const result = {};
+      for (const r of sorted) {
+        const key = getImageKey(r);
+        const imgUrl = `https://raw.githubusercontent.com/otoz1/images/refs/heads/main/${encodeURIComponent(key)}/1.jpg`;
+        try {
+          const resp = await fetch(imgUrl, { method: 'HEAD' });
+          result[key] = resp.ok;
+        } catch {
+          result[key] = false;
+        }
+      }
+      setHasImage(result);
+    };
+    checkImages();
+  }, [releves]);
+
+  return (
     <div className="container" style={{
-      paddingTop: isMobile ? 80 : 40, // Augmenté pour être sûr que le titre soit visible
-      marginTop: isMobile ? 0 : 40,
+      paddingTop: isMobile ? 80 : 40,
+      marginTop: isMobile ? 80 : 40,
       maxWidth: isMobile ? '95vw' : 900,
       borderRadius: isMobile ? 8 : 14,
       boxShadow: isMobile ? '0 1px 6px rgba(0,0,0,0.08)' : '0 4px 24px rgba(0,0,0,0.07)',
@@ -1281,7 +1415,6 @@ function Releve() {
         marginTop: isMobile ? 0 : undefined
       }}><span role="img" aria-label="relevé">🌱</span> Relevé flore & faune 🦔</h2>
 
-      {/* Filtres */}
       <div style={{
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
@@ -1366,7 +1499,6 @@ function Releve() {
         </div>
       </div>
 
-      {/* Statistiques */}
       <div style={{
         display: 'flex',
         gap: isMobile ? 8 : 18,
@@ -1428,6 +1560,7 @@ function Releve() {
                 gap: isMobile ? 8 : 18,
                 position: 'relative'
               }}>
+                {/* emoji, type, nom, description, vignettes, date */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1436,30 +1569,25 @@ function Releve() {
                 }}>
                   <span style={{fontSize: isMobile ? '1.5rem' : '2rem'}}>{emoji}</span>
                   <span style={{
+                    color: '#888',
+                    fontSize: isMobile ? '0.9rem' : '1.05rem',
+                    fontWeight: 600
+                  }}>{r.type}</span>
+                  <span style={{
                     fontWeight: 700,
                     fontSize: isMobile ? '1rem' : '1.15rem',
                     color: '#1a7f5a'
                   }}>{r.nom}</span>
                   <span style={{
-                    color: '#888',
-                    fontSize: isMobile ? '0.9rem' : '1.05rem'
-                  }}>{r.type}</span>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  alignItems: isMobile ? 'flex-start' : 'center',
-                  gap: isMobile ? 8 : 18,
-                  width: isMobile ? '100%' : 'auto'
-                }}>
-                  <span style={{
                     color: '#444',
-                    fontSize: isMobile ? '0.9rem' : '1.05rem'
+                    fontSize: isMobile ? '0.9rem' : '1.05rem',
+                    marginLeft: isMobile ? 0 : 8
                   }}>{r.description}</span>
                   <div style={{
                     display: 'flex',
                     gap: 8,
-                    flexWrap: 'wrap'
+                    flexWrap: 'wrap',
+                    marginLeft: isMobile ? 0 : 8
                   }}>
                     {isNouveau && !isReapparu && (
                       <span style={{
@@ -1497,15 +1625,25 @@ function Releve() {
                   </div>
                   <span style={{
                     color: '#888',
-                    fontSize: isMobile ? '0.85rem' : '0.98rem'
+                    fontSize: isMobile ? '0.85rem' : '0.98rem',
+                    marginLeft: isMobile ? 0 : 8
                   }}>{r.annee}</span>
+                </div>
+                <div style={{position: 'absolute', right: isMobile ? 8 : 18, top: isMobile ? 8 : 18}}>
+                  <button
+                    className="btn"
+                    style={{marginLeft: 8, background: 'transparent', border: 'none', width: 28, height: 28, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'none'}}
+                    onClick={() => setPopupNom(getImageKey(r))}
+                    title="Voir les images"
+                  >
+                    <img src={viewIcon} alt="voir" style={{width: 30, height: 17, opacity: 0.3}} />
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>}
 
-        {/* Section des disparus */}
         {(statusFilter === 'all' || statusFilter === 'disparu') && filteredDisparus.length > 0 && (
           <div style={{marginTop: isMobile ? 24 : 32}}>
             <h3 style={{
@@ -1579,6 +1717,73 @@ function Releve() {
         )}
         </>
       )}
+      {popupNom && <ImagePopup nom={popupNom} onClose={() => setPopupNom(null)} />}
+    </div>
+  );
+}
+
+function ImagePopup({ nom, onClose }) {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [zoomImg, setZoomImg] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchImages = async () => {
+      const imgs = [];
+      for (let i = 1; i <= 10; i++) {
+        const url = `https://raw.githubusercontent.com/otoz1/images/refs/heads/main/${encodeURIComponent(nom)}/${i}.jpg`;
+        try {
+          const resp = await fetch(url, { method: 'HEAD' });
+          if (resp.ok) {
+            imgs.push(url);
+          } else {
+            break;
+          }
+        } catch {
+          break;
+        }
+      }
+      if (isMounted) {
+        setImages(imgs);
+        setLoading(false);
+      }
+    };
+    fetchImages();
+    return () => { isMounted = false; };
+  }, [nom]);
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }} onClick={onClose}>
+      <div style={{
+        background: '#fff', borderRadius: 12, padding: 24, maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 32px rgba(0,0,0,0.25)', position: 'relative'
+      }} onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: 24, right: 32, background: '#1a7f5a', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontWeight: 700, cursor: 'pointer', fontSize: '1.1rem', zIndex: 2
+        }}>Fermer</button>
+        <h3 style={{marginBottom: 18, color: '#1a7f5a'}}>{nom}</h3>
+        {loading ? <div>Chargement...</div> : images.length === 0 ? <div>nous n'avons pas encore de photo pour cet élément!</div> :
+          <div style={{display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center'}}>
+            {images.map((img, i) => (
+              <img key={i} src={img} alt={`photo ${i+1}`} style={{maxWidth: 220, maxHeight: 220, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.10)', cursor: 'zoom-in'}} onClick={() => setZoomImg(img)} />
+            ))}
+          </div>
+        }
+        {zoomImg && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+            background: 'rgba(0,0,0,0.93)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }} onClick={() => setZoomImg(null)}>
+            <img src={zoomImg} alt="zoom" style={{maxWidth: '95vw', maxHeight: '90vh', borderRadius: 12, boxShadow: '0 4px 32px rgba(0,0,0,0.25)', cursor: 'zoom-out'}} onClick={e => e.stopPropagation()} />
+            <button onClick={() => setZoomImg(null)} style={{
+              position: 'fixed', top: 24, right: 32, background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: 18, padding: '6px 18px', fontWeight: 700, cursor: 'pointer', fontSize: '1.5rem', zIndex: 10001
+            }}>✕</button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

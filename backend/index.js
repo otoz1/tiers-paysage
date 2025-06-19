@@ -10,7 +10,6 @@ const XLSX = require('xlsx');
 const app = express();
 const port = 4000;
 
-// Configuration CORS plus explicite
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -28,12 +27,14 @@ process.on('unhandledRejection', err => {
   console.error('Unhandled Rejection:', err);
 });
 
-// dossier uploads
 if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
   fs.mkdirSync(path.join(__dirname, 'uploads'));
 }
 
-// Multer config
+if (!fs.existsSync(path.join(__dirname, 'uploads', 'partenaires'))) {
+  fs.mkdirSync(path.join(__dirname, 'uploads', 'partenaires'));
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, 'uploads'));
@@ -45,13 +46,22 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// SQLite
+const storagePartenaire = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'uploads', 'partenaires'));
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const uploadPartenaire = multer({ storage: storagePartenaire });
+
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: 'database.sqlite',
 });
 
-// Documents
 const Document = sequelize.define('Document', {
   title: {
     type: DataTypes.STRING,
@@ -77,6 +87,16 @@ const Document = sequelize.define('Document', {
     allowNull: true,
     defaultValue: 0,
   },
+  showOnHome: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  showOnNouveautes: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -85,7 +105,6 @@ const Document = sequelize.define('Document', {
 });
 
 
-// Relevé faune/flore
 const Releve = sequelize.define('Releve', {
   annee: {
     type: DataTypes.INTEGER,
@@ -119,7 +138,12 @@ const Releve = sequelize.define('Releve', {
   }
 });
 
-// Synchroniser la base de données avec les modèles
+const Partenaire = sequelize.define('Partenaire', {
+  title: { type: DataTypes.STRING, allowNull: false },
+  image: { type: DataTypes.STRING, allowNull: false },
+  link: { type: DataTypes.STRING, allowNull: false }
+});
+
 sequelize.sync({ alter: true }).then(() => {
   console.log('Base de données synchronisée');
 }).catch(err => {
@@ -128,7 +152,6 @@ sequelize.sync({ alter: true }).then(() => {
 
 sequelize.sync();
 
-// API
 app.get('/api/documents', async (req, res) => {
   const docs = await Document.findAll({ order: [['createdAt', 'DESC']] });
   res.json(docs);
@@ -140,7 +163,6 @@ app.get('/api/documents/:id', async (req, res) => {
   else res.status(404).json({ error: 'Not found' });
 });
 
-// Releves publics
 app.get('/api/releves', async (req, res) => {
   const { annee } = req.query;
   const where = annee ? { annee } : {};
@@ -163,16 +185,32 @@ app.post('/api/admin/upload', upload.array('images', 10), (req, res) => {
   res.json({ files });
 });
 
+// upload image partenaire (1 seule)
+app.post('/api/admin/upload-partenaire', uploadPartenaire.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const fileUrl = `/uploads/partenaires/${req.file.filename}`;
+  // Suppression auto si non utilisé dans 1 min
+  setTimeout(() => {
+    // Vérifier si l'image est utilisée par un partenaire
+    Partenaire.findOne({ where: { image: fileUrl } }).then(p => {
+      if (!p) {
+        fs.unlink(path.join(__dirname, fileUrl), err => {});
+      }
+    });
+  }, 60 * 1000);
+  res.json({ file: fileUrl });
+});
+
 // création document avec images
 app.post('/api/admin/documents', async (req, res) => {
-  const { title, content, password, images, mainImage } = req.body;
+  const { title, content, password, images, mainImage, showOnHome, showOnNouveautes } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
-  const doc = await Document.create({ title, content, images, mainImage });
+  const doc = await Document.create({ title, content, images, mainImage, showOnHome, showOnNouveautes });
   res.json(doc);
 });
 
 app.put('/api/admin/documents/:id', async (req, res) => {
-  const { title, content, password, images, mainImage } = req.body;
+  const { title, content, password, images, mainImage, showOnHome, showOnNouveautes } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
   const doc = await Document.findByPk(req.params.id);
   if (!doc) return res.status(404).json({ error: 'Not found' });
@@ -180,6 +218,8 @@ app.put('/api/admin/documents/:id', async (req, res) => {
   doc.content = content;
   doc.images = images;
   doc.mainImage = mainImage;
+  doc.showOnHome = showOnHome;
+  doc.showOnNouveautes = showOnNouveautes;
   await doc.save();
   res.json(doc);
 });
@@ -254,7 +294,7 @@ app.post('/api/admin/import-releves', upload.single('file'), async (req, res) =>
     const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
     let count = 0;
     for (const row of data) {
-      if (!row[0] || !row[1]) continue; // Skip rows without required data
+      if (!row[0] || !row[1]) continue;
       const nomScientifique = row[0]; // Colonne 1 : Nom scientifique (description)
       const nomVernaculaire = row[1]; // Colonne 2 : Nom vernaculaire (titre)
       const isProtege = row[2] ? true : false; // Colonne 3 : Protégé
@@ -269,10 +309,85 @@ app.post('/api/admin/import-releves', upload.single('file'), async (req, res) =>
       });
       count++;
     }
+    // Supprimer le fichier Excel après traitement
+    fs.unlink(req.file.path, err => {});
     res.json({ success: true, count });
   } catch (e) {
+    // Supprimer le fichier Excel même en cas d'erreur
+    if (req.file && req.file.path) fs.unlink(req.file.path, err => {});
     res.status(500).json({ error: 'Erreur import', details: e.message });
   }
+});
+
+app.get('/api/partenaires', async (req, res) => {
+  const partenaires = await Partenaire.findAll({ order: [['id', 'ASC']] });
+  res.json(partenaires);
+});
+app.post('/api/admin/partenaires', async (req, res) => {
+  const { password, title, image, link } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  const p = await Partenaire.create({ title, image, link });
+  res.json(p);
+});
+app.put('/api/admin/partenaires/:id', async (req, res) => {
+  const { password, title, image, link } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  const p = await Partenaire.findByPk(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  // Si image changée, supprimer l'ancienne
+  if (p.image && p.image !== image && p.image.startsWith('/uploads/partenaires/')) {
+    fs.unlink(path.join(__dirname, p.image), err => {});
+  }
+  p.title = title; p.image = image; p.link = link;
+  await p.save();
+  res.json(p);
+});
+app.delete('/api/admin/partenaires/:id', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  const p = await Partenaire.findByPk(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  if (p.image && p.image.startsWith('/uploads/partenaires/')) {
+    fs.unlink(path.join(__dirname, p.image), err => {});
+  }
+  await p.destroy();
+  res.json({ success: true });
+});
+
+// Nettoyage des images orphelines dans uploads/ (non référencées en BDD)
+app.post('/api/admin/cleanup-uploads', async (req, res) => {
+  const { password } = req.body;
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+  const uploadsDir = path.join(__dirname, 'uploads');
+  const files = fs.readdirSync(uploadsDir).filter(f => !fs.lstatSync(path.join(uploadsDir, f)).isDirectory());
+
+  // Récupérer toutes les images utilisées dans Document et Partenaire
+  const docs = await Document.findAll();
+  let usedImages = new Set();
+  docs.forEach(doc => {
+    (doc.images || []).forEach(img => {
+      if (typeof img === 'string' && img.startsWith('/uploads/')) {
+        usedImages.add(img.replace('/uploads/', ''));
+      }
+    });
+  });
+  const partenaires = await Partenaire.findAll();
+  partenaires.forEach(p => {
+    if (typeof p.image === 'string' && p.image.startsWith('/uploads/')) {
+      usedImages.add(p.image.replace('/uploads/', ''));
+    }
+  });
+
+  let deleted = [];
+  for (const file of files) {
+    if (!usedImages.has(file)) {
+      try {
+        fs.unlinkSync(path.join(uploadsDir, file));
+        deleted.push(file);
+      } catch {}
+    }
+  }
+  res.json({ deleted });
 });
 
 console.log('Ready to listen...');

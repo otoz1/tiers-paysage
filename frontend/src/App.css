@@ -1,16 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
+@import url('https://fonts.cdnfonts.com/css/futura-pt');
 
 @font-face {
-  font-family: "Futura";
-  src: url("Futura Bold.otf") format("opentype");
+  font-family: 'Futura';
+  src: url('FuturaPT-Medium.ttf') format('truetype');
   font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Futura';
+  src: url('FuturaPT-Bold.ttf') format('truetype');
+  font-weight: bold;
   font-style: normal;
 }
 
 body {
-  font-family: 'Inter';
-  background: #f5f6fa;
+  font-family: 'Futura', sans-serif;
+  background: linear-gradient(135deg, #f8fafc 0%, #f5f3e7 100%);
   color: #222;
   margin: 0;
   min-height: 100vh;
@@ -82,11 +89,12 @@ body.home-bg {
   font-size: 1rem;
   padding: 8px 16px;
   border-radius: 6px;
-  background: #fbfffa; 
+  background: #eafaf2;
   transition: background 0.18s, color 0.18s;
+  outline: #145c41;
 }
 .navbar a.active, .navbar a:hover {
-  background: #e3fcef;
+  background: #ddffee;
   color: #1a7f5a;
 }
 
@@ -94,9 +102,9 @@ body.home-bg {
   max-width: 900px;
   margin: 40px auto 0 auto;
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
-  padding: 40px 32px;
+  border-radius: 22px;
+  box-shadow: 0 8px 32px rgba(26,127,90,0.08), 0 1.5px 8px rgba(0,0,0,0.04);
+  padding: 56px 40px;
 }
 
 .card-list {
@@ -106,9 +114,9 @@ body.home-bg {
   justify-content: flex-start;
 }
 .card {
-  background: #f8fafc;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  background: linear-gradient(120deg, #ebf4fc 60%, #ddf8eb 100%);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(26,127,90,0.08);
   width: 270px;
   min-height: 320px;
   display: flex;
@@ -117,34 +125,35 @@ body.home-bg {
   transition: box-shadow 0.18s, transform 0.18s;
 }
 .card:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.13);
-  transform: translateY(-4px) scale(1.025);
+  box-shadow: 0 12px 36px rgba(26,127,90,0.16);
+  transform: translateY(-6px) scale(1.035);
 }
 .card-img {
   width: 100%;
   height: 160px;
   object-fit: cover;
   background: #e0e0e0;
+  border-radius: 0 0 16px 16px;
 }
 .card-content {
   flex: 1;
-  padding: 18px 16px 12px 16px;
+  padding: 22px 18px 14px 18px;
   display: flex;
   flex-direction: column;
 }
 .card-title {
-  font-size: 1.13rem;
-  font-weight: 600;
+  font-size: 1.23rem;
+  font-weight: 700;
   color: #1a7f5a;
   margin-bottom: 6px;
 }
 .card-date {
-  font-size: 0.93rem;
+  font-size: 0.98rem;
   color: #888;
   margin-bottom: 8px;
 }
 .card-excerpt {
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: #444;
   margin-bottom: 10px;
   flex: 1;
@@ -157,18 +166,39 @@ body.home-bg {
   background: #1a7f5a;
   color: #fff;
   border: none;
-  border-radius: 6px;
-  padding: 8px 18px;
-  font-size: 1rem;
-  font-weight: 500;
+  border-radius: 24px;
+  padding: 12px 28px;
+  font-size: 1.08rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.18s, box-shadow 0.18s;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
   box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   margin-left: 8px;
 }
 .btn:hover {
   background: #145c41;
+  box-shadow: 0 4px 16px rgba(26,127,90,0.13);
+  transform: translateY(-2px) scale(1.04);
 }
+
+.section-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #1a7f5a;
+  margin-bottom: 18px;
+  text-align: left;
+  position: relative;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #1a7f5a 60%, #eafaf2 100%);
+  border-radius: 2px;
+  margin-top: 8px;
+}
+
 input, .ql-container {
   font-size: 1rem;
   padding: 8px;
@@ -190,21 +220,21 @@ footer {
 
 .gallery {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
 .gallery img {
-  border-radius: 8px;
+  border-radius: 12px;
   max-height: 160px;
   object-fit: cover;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(26,127,90,0.10);
   transition: transform 0.18s, box-shadow 0.18s;
   cursor: pointer;
 }
 .gallery img:hover {
-  transform: scale(1.07);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.13);
+  transform: scale(1.09);
+  box-shadow: 0 8px 32px rgba(26,127,90,0.18);
 }
 
 @media (max-width: 1000px) {
@@ -219,8 +249,8 @@ footer {
   .container {
     padding: 8px 1vw;
     margin: 16px 0 0 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(26,127,90,0.07);
   }
   .navbar, .navbar.navbar-home {
     padding: 0 4px;
@@ -269,16 +299,16 @@ footer {
   .card {
     width: 100%;
     min-width: 0;
-    border-radius: 8px;
+    border-radius: 12px;
   }
   .card-list {
     flex-direction: column;
     gap: 10px;
   }
   .btn {
-    font-size: 0.98rem;
-    padding: 8px 12px;
-    border-radius: 5px;
+    font-size: 1.01rem;
+    padding: 10px 16px;
+    border-radius: 18px;
   }
   .carousel-slide-container {
     height: 260px;
@@ -310,6 +340,11 @@ footer {
     width: 100vw !important;
     min-width: 0 !important;
     border-radius: 0 !important;
+  }
+  .barre-chargement > div {
+    background: linear-gradient(90deg, #1a7f5a 60%, #e0e0e0 100%) !important;
+    height: 100%;
+    border-radius: 2px;
   }
   .burger-menu {
     position: fixed !important;
@@ -451,4 +486,40 @@ footer {
   display: inline-block !important;
   align-self: unset !important;
   margin: 0 !important;
+}
+
+/* Focus visible stylé (desktop only) */
+@media (min-width: 701px) {
+  button:focus, .btn:focus, a:focus {
+    outline: 2.5px solid #1a7f5a;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px #eafaf2;
+    z-index: 2;
+    transition: outline 0.18s, box-shadow 0.18s;
+  }
+}
+
+/* Animation douce sur boutons, cartes, images (desktop only) */
+@media (min-width: 701px) {
+  .btn {
+    transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+  }
+  .btn:hover, .btn:active {
+    transform: scale(1.045);
+    box-shadow: 0 4px 16px rgba(26,127,90,0.13);
+  }
+  .card {
+    transition: box-shadow 0.18s, transform 0.18s;
+  }
+  .card:hover {
+    transform: translateY(-6px) scale(1.035);
+    box-shadow: 0 12px 36px rgba(26,127,90,0.16);
+  }
+  .gallery img {
+    transition: transform 0.18s, box-shadow 0.18s;
+  }
+  .gallery img:hover {
+    transform: scale(1.09);
+    box-shadow: 0 8px 32px rgba(26,127,90,0.18);
+  }
 }
