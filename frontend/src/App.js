@@ -1175,11 +1175,15 @@ function EcoleJardinPlanetaire() {
         <div style={{margin:'18px 0', background:'#f3f3f3', borderRadius:10, padding:'16px 18px', fontSize:'1.08rem'}}>
           <b>Les écoles du jardin planétaire dans le monde :</b>
           <ul style={{margin:'10px 0 0 18px'}}>
-            <li><b>La Réunion</b> : sensibilisation à la biodiversité, balades, ateliers, formation de citoyens engagés.</li>
-            <li><b>Saline royale d'Arc-et-Senans (Doubs)</b> : jardins pédagogiques, formations, expérimentations autour de l'écologie, de l'art et de l'histoire.</li>
-            <li><b>Roumanie (Brezoi)</b> : éducation environnementale autour des friches, forêts urbaines, terrains vagues, réconciliation nature/ville.</li>
-            <li><b>Italie (Toscane)</b> : réflexion écologique et artistique sur la gestion des paysages méditerranéens, valorisation de la biodiversité locale.</li>
-            <li><b>Abbaye de Valsaintes</b> : restauration de serres, préservation de 12 000 espèces végétales, espace pédagogique sur le climat et la biodiversité.</li>
+            <li><b>Saline royale d’Arc-et-Senans</b> (Bourgogne‑Franche‑Comté)</li>
+            <li><b>Italie</b> (pas d'adresse)</li>
+            <li><b>Saint-Herblain</b> (Loire-Atlantique)</li>
+            <li><b>Limoges</b> (Nouvelle-Aquitaine)</li>
+            <li><b>Viry-Châtillon</b> (Esonne, Île-de-France)</li>
+            <li><b>Valsaintes</b> (Alpes-de-Haute-Provence)</li>
+            <li><b>Saint-Paul</b> (La Réunion)</li>
+            <li><b>Parc Henri Matisse</b> - l’île Derborence</li>
+            <li><b>Jardin du Tiers Paysage</b> : Saint-Nazaire</li>
           </ul>
         </div>
         <div style={{fontStyle:'italic', color:'#1a7f5a', fontWeight:600, margin:'18px 0 0 0', fontSize:'1.08rem'}}>
